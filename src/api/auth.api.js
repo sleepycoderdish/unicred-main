@@ -35,7 +35,7 @@ export async function registerStudent(data) {
     name:     data.name.trim(),
     password: data.password,
   })
-  return res.data
+  return res.data.data
 }
 
 // ── Email Verification ────────────────────────────────────────
@@ -58,14 +58,14 @@ export async function resendOtp(email) {
   const res = await apiClient.post(AUTH_ENDPOINTS.RESEND_OTP, {
     email: email.trim().toLowerCase(),
   })
-  return res.data
+  return res.data.data
 }
 
 /**
  * verifyOtp — verifies the OTP and marks the email as verified.
  *
  * REQUEST  : POST /api/auth/verify-otp
- *   Body   : { email: string, otp: number }
+ *   Body   : { email: string, otp: string }
  *   Note   : OTP is sent as an integer per the proposal.
  *
  * RESPONSE : 200 OK
@@ -80,9 +80,9 @@ export async function resendOtp(email) {
 export async function verifyOtp(email, otp) {
   const res = await apiClient.post(AUTH_ENDPOINTS.VERIFY_OTP, {
     email: email.trim().toLowerCase(),
-    otp:   parseInt(otp, 10), // Backend expects int
+    otp:   otp // Backend expects int
   })
-  return res.data
+  return res.data.data
 }
 
 // ── Login ─────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ export async function login(data) {
     email:    data.email.trim().toLowerCase(),
     password: data.password,
   })
-  return res.data
+  return res.data.data
 }
 
 // ── Logout ────────────────────────────────────────────────────
@@ -136,7 +136,7 @@ export async function login(data) {
  */
 export async function logout() {
   const res = await apiClient.post(AUTH_ENDPOINTS.LOGOUT)
-  return res.data
+  return res.data.data
 }
 
 /**
@@ -154,7 +154,7 @@ export async function logout() {
  */
 export async function logoutAll() {
   const res = await apiClient.post(AUTH_ENDPOINTS.LOGOUT_ALL)
-  return res.data
+  return res.data.data
 }
 
 // ── Forgot / Reset Password ───────────────────────────────────
@@ -177,7 +177,7 @@ export async function forgotPassword(email) {
   const res = await apiClient.post(AUTH_ENDPOINTS.FORGOT_PASSWORD, {
     email: email.trim().toLowerCase(),
   })
-  return res.data
+  return res.data.data
 }
 
 /**
@@ -201,5 +201,5 @@ export async function resetPassword(data) {
     otp:         data.otp,         // string per proposal
     newPassword: data.newPassword,
   })
-  return res.data
+  return res.data.data
 }
