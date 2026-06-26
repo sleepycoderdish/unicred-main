@@ -24,155 +24,101 @@
 //   the route they're trying to access.
 // ─────────────────────────────────────────────────────────────
 
+// src/router.jsx — Updated with AppShell + admin sub-routes
+// src/router.jsx — Updated with AppShell + admin sub-routes
 import { lazy, Suspense } from 'react'
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
-
+import { createBrowserRouter, RouterProvider, Link } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/guards/ProtectedRoute'
 import { RoleGuard }      from '@/components/guards/RoleGuard'
 import { PageLoader }     from '@/components/ui/Loader'
-import { ROLES }          from '@/config/constants'
+import { AppShell }       from '@/layouts/AppShell'
+import { ROLES, ROUTES }  from '@/config/constants'
+import useAuthStore        from '@/store/auth.store'
 
-// ── Eager imports (auth + landing) ───────────────────────────
+/**
+ * NotFound — 404 page.
+ * "Go back" destination is role-aware:
+ *   Authenticated   → their role dashboard (session stays intact, no reload)
+ *   Unauthenticated → landing page
+ */
+function NotFound() {
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const getDashboard    = useAuthStore(s => s.getDashboard)
+  const destination     = isAuthenticated ? getDashboard() : ROUTES.LANDING
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'100vh', gap:16, color:'var(--text-secondary)', fontFamily:'var(--font-sans)' }}>
+      <h1 style={{ fontSize:'4rem', color:'var(--text-muted)', margin:0 }}>404</h1>
+      <p>Page not found.</p>
+      <Link to={destination} style={{ color:'var(--accent-sky)', fontSize:'0.875rem' }}>
+        {isAuthenticated ? 'Go to dashboard' : 'Go home'}
+      </Link>
+    </div>
+  )
+}
+
+// Eager
 import Login          from '@/pages/auth/Login'
 import Register       from '@/pages/auth/Register'
 import VerifyEmail    from '@/pages/auth/VerifyEmail'
 import ForgotPassword from '@/pages/auth/ForgotPassword'
 import ResetPassword  from '@/pages/auth/ResetPassword'
 
-// ── Lazy imports (dashboard pages — code split per role) ──────
-// Student pages
-const StudentDashboard  = lazy(() => import('@/pages/student/Dashboard'))
+// Lazy — admin
+const AdminDashboard  = lazy(() => import('@/pages/admin/Dashboard'))
+const DepartmentsPage = lazy(() => import('@/pages/admin/departments/DepartmentsPage'))
+const FacultiesPage   = lazy(() => import('@/pages/admin/faculties/FacultiesPage'))
 
-// Faculty pages
-const FacultyDashboard  = lazy(() => import('@/pages/faculty/Dashboard'))
+// Lazy — other roles
+const StudentDashboard = lazy(() => import('@/pages/student/Dashboard'))
+const FacultyDashboard = lazy(() => import('@/pages/faculty/Dashboard'))
+const HodDashboard     = lazy(() => import('@/pages/hod/Dashboard'))
+const Landing          = lazy(() => import('@/pages/landing/Landing'))
 
-// HOD pages
-const HodDashboard      = lazy(() => import('@/pages/hod/Dashboard'))
-
-// Admin pages
-const AdminDashboard    = lazy(() => import('@/pages/admin/Dashboard'))
-
-// Landing page
-const Landing           = lazy(() => import('@/pages/landing/Landing'))
-
-// ── Suspense fallback ─────────────────────────────────────────
-// Shown while lazy-loaded chunks are downloading.
-const LazyFallback = () => <PageLoader message="Loading..." />
-
-// ── Router configuration ──────────────────────────────────────
-const router = createBrowserRouter([
-  // ── Public: Landing ────────────────────────────────────────
-  {
-    path: '/',
-    element: (
-      <Suspense fallback={<LazyFallback />}>
-        <Landing />
-      </Suspense>
-    ),
-  },
-
-  // ── Public: Auth pages (no AppShell, no sidebar) ───────────
-  {
-    path: '/auth/login',
-    element: <Login />,
-  },
-  {
-    path: '/auth/register',
-    element: <Register />,
-  },
-  {
-    path: '/auth/verify-email',
-    element: <VerifyEmail />,
-  },
-  {
-    path: '/auth/forgot-password',
-    element: <ForgotPassword />,
-  },
-  {
-    path: '/auth/reset-password',
-    element: <ResetPassword />,
-  },
-
-  // ── Protected: Student routes ──────────────────────────────
-  {
-    path: '/student',
-    element: (
-      <ProtectedRoute>
-        <RoleGuard allowedRoles={[ROLES.STUDENT]}>
-          <Suspense fallback={<LazyFallback />}>
-            <StudentDashboard />
-          </Suspense>
-        </RoleGuard>
-      </ProtectedRoute>
-    ),
-  },
-
-  // ── Protected: Faculty routes ──────────────────────────────
-  {
-    path: '/faculty',
-    element: (
-      <ProtectedRoute>
-        <RoleGuard allowedRoles={[ROLES.FACULTY]}>
-          <Suspense fallback={<LazyFallback />}>
-            <FacultyDashboard />
-          </Suspense>
-        </RoleGuard>
-      </ProtectedRoute>
-    ),
-  },
-
-  // ── Protected: HOD routes ──────────────────────────────────
-  {
-    path: '/hod',
-    element: (
-      <ProtectedRoute>
-        <RoleGuard allowedRoles={[ROLES.HOD]}>
-          <Suspense fallback={<LazyFallback />}>
-            <HodDashboard />
-          </Suspense>
-        </RoleGuard>
-      </ProtectedRoute>
-    ),
-  },
-
-  // ── Protected: Admin routes ────────────────────────────────
-  {
-    path: '/admin',
-    element: (
-      <ProtectedRoute>
-        <RoleGuard allowedRoles={[ROLES.ADMIN]}>
-          <Suspense fallback={<LazyFallback />}>
-            <AdminDashboard />
-          </Suspense>
-        </RoleGuard>
-      </ProtectedRoute>
-    ),
-  },
-
-  // ── 404 catch-all ──────────────────────────────────────────
-  {
-    path: '*',
-    element: (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', minHeight: '100vh', gap: 16,
-        color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)',
-      }}>
-        <h1 style={{ fontSize: '4rem', color: 'var(--text-muted)', margin: 0 }}>404</h1>
-        <p>Page not found.</p>
-        <a href="/" style={{ color: 'var(--accent-sky)', fontSize: '0.875rem' }}>
-          Go home
-        </a>
-      </div>
-    ),
-  },
-])
+const Fallback = () => <PageLoader message="Loading..." />
 
 /**
- * AppRouter — renders the router. Mount in App.jsx.
+ * guardedPage — wraps a page in ProtectedRoute + RoleGuard + AppShell.
+ * All dashboard routes go through this so sidebar/layout is consistent.
  */
-export function AppRouter() {
-  return <RouterProvider router={router} />
+function guardedPage(element, allowedRoles) {
+  return (
+    <ProtectedRoute>
+      <RoleGuard allowedRoles={allowedRoles}>
+        <AppShell>
+          <Suspense fallback={<Fallback />}>{element}</Suspense>
+        </AppShell>
+      </RoleGuard>
+    </ProtectedRoute>
+  )
 }
 
+const router = createBrowserRouter([
+  // Public
+  { path: '/',                      element: <Suspense fallback={<Fallback />}><Landing /></Suspense> },
+  { path: '/auth/login',            element: <Login /> },
+  { path: '/auth/register',         element: <Register /> },
+  { path: '/auth/verify-email',     element: <VerifyEmail /> },
+  { path: '/auth/forgot-password',  element: <ForgotPassword /> },
+  { path: '/auth/reset-password',   element: <ResetPassword /> },
+
+  // Admin
+  { path: '/admin',                 element: guardedPage(<AdminDashboard />,  [ROLES.ADMIN]) },
+  { path: '/admin/departments',     element: guardedPage(<DepartmentsPage />, [ROLES.ADMIN]) },
+  { path: '/admin/faculties',       element: guardedPage(<FacultiesPage />,   [ROLES.ADMIN]) },
+
+  // Student
+  { path: '/student',               element: guardedPage(<StudentDashboard />, [ROLES.STUDENT]) },
+
+  // Faculty
+  { path: '/faculty',               element: guardedPage(<FacultyDashboard />, [ROLES.FACULTY]) },
+
+  // HOD
+  { path: '/hod',                   element: guardedPage(<HodDashboard />,     [ROLES.HOD]) },
+
+  // 404
+  { path: '*', element: <NotFound /> },
+])
+
+export function AppRouter() { return <RouterProvider router={router} /> }
 export default AppRouter
