@@ -16,6 +16,8 @@
 // ─────────────────────────────────────────────────────────────
 
 
+// src/pages/admin/departments/DepartmentsPage.jsx
+
 import { useState } from 'react'
 import { PageHeader }  from '@/components/ui/PageHeader'
 import { Button }      from '@/components/ui/Button'
@@ -72,15 +74,23 @@ function KpiCard({ icon, label, value, color, loading }) {
 function AssignHodModal({ department, isOpen, onClose }) {
   const [search, setSearch] = useState('')
   const [selectedUserId, setSelectedUserId] = useState(null)
-  const { data: faculties = [], isLoading: facultiesLoading } = useFaculties()
+  // Only fetch faculty from THIS department — server filters via ?departmentId=x
+  const { data: faculties = [], isLoading: facultiesLoading } = useFaculties(department?.id)
   const { mutate: updateDept, isPending: updating } = useUpdateDepartment()
 
-  const filtered = faculties.filter(f => {
+  // Exclude anyone already holding the 'hod' role.
+  // When a faculty is assigned HOD their role flips to 'hod' in the DB,
+  // so they won't appear here until they are removed from the post.
+  const eligible = faculties.filter(f => f.user.role !== 'hod')
+
+  // Apply search on top of the eligible list
+  const filtered = eligible.filter(f => {
+    if (!search) return true
     const q = search.toLowerCase()
     return f.user.name.toLowerCase().includes(q) ||
-           f.user.email.toLowerCase().includes(q) ||
-           f.department.name.toLowerCase().includes(q)
+           f.user.email.toLowerCase().includes(q)
   })
+
 
   function handleConfirm() {
     if (!selectedUserId) return

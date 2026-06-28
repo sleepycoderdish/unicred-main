@@ -25,7 +25,6 @@
 // ─────────────────────────────────────────────────────────────
 
 // src/router.jsx — Updated with AppShell + admin sub-routes
-// src/router.jsx — Updated with AppShell + admin sub-routes
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter, RouterProvider, Link } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/guards/ProtectedRoute'
@@ -75,6 +74,29 @@ const FacultyDashboard = lazy(() => import('@/pages/faculty/Dashboard'))
 const HodDashboard     = lazy(() => import('@/pages/hod/Dashboard'))
 const Landing          = lazy(() => import('@/pages/landing/Landing'))
 
+// Lazy — admin sub-pages
+const GradingSystemPage  = lazy(() => import('@/pages/admin/grading/GradingSystemPage'))
+
+// Lazy — HOD sub-pages
+const PublicationsPage   = lazy(() => import('@/pages/hod/results/PublicationsPage'))
+const PublicationReview  = lazy(() => import('@/pages/hod/results/PublicationReview'))
+const ReappearReviewPage = lazy(() => import('@/pages/hod/reappear/ReappearReviewPage'))
+const SessionsPage       = lazy(() => import('@/pages/hod/sessions/SessionsPage'))
+const SubjectsPage       = lazy(() => import('@/pages/hod/subjects/SubjectsPage'))
+const HodAssignmentsPage = lazy(() => import('@/pages/hod/assignments/HodAssignmentsPage'))
+const TimetablePage      = lazy(() => import('@/pages/hod/timetable/TimetablePage'))
+
+// Lazy — Faculty sub-pages
+const MarkUploadPage     = lazy(() => import('@/pages/faculty/results/MarkUploadPage'))
+const ReappearMarksPage  = lazy(() => import('@/pages/faculty/reappear/ReappearMarksPage'))
+const AssignmentsPage    = lazy(() => import('@/pages/faculty/assignments/AssignmentsPage'))
+const AssessmentsPage    = lazy(() => import('@/pages/faculty/assessments/AssessmentsPage'))
+
+// Lazy — Student sub-pages
+const ResultsPage        = lazy(() => import('@/pages/student/results/ResultsPage'))
+const CgpaPage           = lazy(() => import('@/pages/student/results/CgpaPage'))
+const StudentReappearPage= lazy(() => import('@/pages/student/reappear/ReappearPage'))
+
 const Fallback = () => <PageLoader message="Loading..." />
 
 /**
@@ -115,6 +137,29 @@ const router = createBrowserRouter([
 
   // HOD
   { path: '/hod',                   element: guardedPage(<HodDashboard />,     [ROLES.HOD]) },
+
+  // Admin sub-routes
+  { path: '/admin/grading',        element: guardedPage(<GradingSystemPage />,  [ROLES.ADMIN]) },
+
+  // HOD sub-routes
+  { path: '/hod/sessions',         element: guardedPage(<SessionsPage />,       [ROLES.HOD]) },
+  { path: '/hod/subjects',         element: guardedPage(<SubjectsPage />,       [ROLES.HOD]) },
+  { path: '/hod/assignments',      element: guardedPage(<HodAssignmentsPage />, [ROLES.HOD]) },
+  { path: '/hod/results',          element: guardedPage(<PublicationsPage />,   [ROLES.HOD]) },
+  { path: '/hod/results/:id',      element: guardedPage(<PublicationReview />,  [ROLES.HOD]) },
+  { path: '/hod/reappear',         element: guardedPage(<ReappearReviewPage />, [ROLES.HOD]) },
+  { path: '/hod/timetable',        element: guardedPage(<TimetablePage />,      [ROLES.HOD]) },
+
+  // Faculty sub-routes
+  { path: '/faculty/assignments',  element: guardedPage(<AssignmentsPage />,    [ROLES.FACULTY, ROLES.HOD]) },
+  { path: '/faculty/marks',        element: guardedPage(<MarkUploadPage />,     [ROLES.FACULTY, ROLES.HOD]) },
+  { path: '/faculty/assessments',  element: guardedPage(<AssessmentsPage />,    [ROLES.FACULTY, ROLES.HOD]) },
+  { path: '/faculty/reappear',     element: guardedPage(<ReappearMarksPage />,  [ROLES.FACULTY, ROLES.HOD]) },
+
+  // Student sub-routes
+  { path: '/student/results',      element: guardedPage(<ResultsPage />,        [ROLES.STUDENT]) },
+  { path: '/student/cgpa',         element: guardedPage(<CgpaPage />,           [ROLES.STUDENT]) },
+  { path: '/student/reappear',     element: guardedPage(<StudentReappearPage />, [ROLES.STUDENT]) },
 
   // 404
   { path: '*', element: <NotFound /> },

@@ -29,6 +29,7 @@ const useAuthStore = create(
     (set, get) => ({
       // ── State ──────────────────────────────────────────────
       accessToken:     null,   // Raw JWT string (in-memory only)
+      refreshToken:    null,   // Stored in memory — sent in body of /auth/refresh
       user:            null,   // Decoded payload: { userId, role, schoolId }
       isAuthenticated: false,
       isInitialised:   false,  // True after the first refresh-token check on mount
@@ -41,12 +42,18 @@ const useAuthStore = create(
        *
        * @param {string} accessToken - Raw JWT from backend response body
        */
-      setTokens: (accessToken) => {
+      /**
+       * setTokens — called after login or token refresh.
+       * @param {string} accessToken
+       * @param {string} [refreshToken] - stored in memory so refresh calls can send it in the body
+       */
+      setTokens: (accessToken, refreshToken) => {
         const decoded = decodeJwt(accessToken)
         // decoded shape: { userId, role, schoolId, iat, exp }
 
         set({
           accessToken,
+          ...(refreshToken ? { refreshToken } : {}),
           user: {
             userId:   decoded.userId,
             role:     decoded.role,
@@ -64,6 +71,7 @@ const useAuthStore = create(
       clearAuth: () => {
         set({
           accessToken:     null,
+          refreshToken:    null,
           user:            null,
           isAuthenticated: false,
         }, false, 'clearAuth')

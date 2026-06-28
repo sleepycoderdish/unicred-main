@@ -35,35 +35,50 @@ export function ProtectedRoute({ children }) {
   const location = useLocation()
 
   useEffect(() => {
-    // Only run the refresh check once on mount (not on every navigation)
+    // Run only once — skip if already initialised
     if (isInitialised) return
 
+    // KEY FIX: if the user just logged in, isAuthenticated is already true
+    // in memory. No need to call the refresh endpoint — just mark initialised
+    // and let them through. Calling refresh here was causing the logout loop:
+    // login → navigate → ProtectedRoute fires refresh → refresh fails (no token
+    // in body yet) → clearAuth → logged out → second login works because
+    // isInitialised is now true and this block is skipped.
+    if (isAuthenticated) {
+      setInitialised()
+      return
+    }
+
     /**
-     * attemptSilentRefresh — calls /auth/refresh.
-     * The HttpOnly refresh-token cookie is sent automatically by the browser.
-     * If valid → backend returns a new access token → we're authenticated.
-     * If invalid/expired → backend returns 401 → we clear auth.
+     * attemptSilentRefresh — only runs on a hard page reload when the
+     * access token has been lost from memory. Sends the stored refresh token
+     * in the request body (backend may also read from cookie).
      */
     async function attemptSilentRefresh() {
       try {
+        // Get the stored refresh token (set during login)
+        const storedRefreshToken = useAuthStore.getState().refreshToken
+
         // REQUEST : POST /api/auth/refresh
-        //   Cookie : refreshToken (HttpOnly, sent automatically)
-        //   Body   : (empty)
-        //
-        // RESPONSE: { accessToken: string }
-        const { data } = await apiClient.post(AUTH_ENDPOINTS.REFRESH_TOKEN, {})
-        setTokens(data.accessToken)
+        //   Body  : { refreshToken } — required by the backend
+        //   Cookie: refreshToken (HttpOnly) — also sent if server set one
+        const res = await apiClient.post(AUTH_ENDPOINTS.REFRESH_TOKEN, {
+          ...(storedRefreshToken ? { refreshToken: storedRefreshToken } : {}),
+        })
+
+        // Backend returns new tokens — handle both flat and nested shapes
+        const tokenData = res.data?.data ?? res.data
+        setTokens(tokenData.accessToken, tokenData.refreshToken)
       } catch {
-        // Refresh failed = no valid session; user must log in
+        // Truly no valid session — user must log in
         clearAuth()
       } finally {
-        // Mark initialisation complete regardless of outcome
         setInitialised()
       }
     }
 
     attemptSilentRefresh()
-  }, [isInitialised, setTokens, clearAuth, setInitialised])
+  }, [isInitialised, isAuthenticated, setTokens, clearAuth, setInitialised])
 
   // ── Not yet checked ──────────────────────────────────────
   if (!isInitialised) {

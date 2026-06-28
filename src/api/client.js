@@ -123,33 +123,51 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-        // Attempt silent refresh — browser sends HttpOnly cookie automatically
-        // REQUEST : POST /api/auth/refresh (no body — cookie is sent automatically)
-        // RESPONSE: { accessToken: string }
-        const { data } = await axios.post(
+        // Read the stored refresh token from the auth store.
+        // This was saved during login. Without it in the body the backend
+        // returns 401 and the user gets logged out after 15 minutes.
+        const storedRefreshToken = useAuthStore.getState().refreshToken
+
+        // REQUEST : POST /api/auth/refresh
+        //   Body  : { refreshToken } — backend reads this from body
+        //   Cookie: also sent automatically if backend set an HttpOnly cookie
+        // RESPONSE shape: { accessToken, refreshToken }
+        //   OR nested:    { success: true, data: { accessToken, refreshToken } }
+        const refreshRes = await axios.post(
           AUTH_ENDPOINTS.REFRESH_TOKEN,
-          {},
+          storedRefreshToken ? { refreshToken: storedRefreshToken } : {},
           { withCredentials: true }
         )
 
-        const newToken = data.accessToken
-        useAuthStore.getState().setTokens(newToken)
+        // Handle both flat and nested response shapes
+        const tokenData = refreshRes.data?.data ?? refreshRes.data
+        const newAccessToken  = tokenData.accessToken
+        const newRefreshToken = tokenData.refreshToken
 
-        // Update the Authorization header for future requests
-        apiClient.defaults.headers.common.Authorization = `Bearer ${newToken}`
+        // Store both tokens — refresh token rotates on each use
+        useAuthStore.getState().setTokens(newAccessToken, newRefreshToken)
 
-        processQueue(null, newToken)
+        // Update default header so all future requests use the new token
+        apiClient.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`
 
-        // Retry the original request with the new token
-        originalRequest.headers.Authorization = `Bearer ${newToken}`
+        processQueue(null, newAccessToken)
+
+        // Retry the original failed request with the new access token
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
         return apiClient(originalRequest)
       } catch (refreshError) {
-        // Refresh failed — session is truly expired
         processQueue(refreshError, null)
-        useAuthStore.getState().clearAuth()
 
-        // Redirect to login (without React Router — we're outside component tree)
-        window.location.href = '/auth/login?reason=session_expired'
+        // Only force-logout if the access token is ACTUALLY expired.
+        // If the token is still valid, this 401 was caused by a role/permission
+        // issue on a specific endpoint — not a session expiry.
+        // Logging out in that case would kick the user out mid-session.
+        const tokenExpired = useAuthStore.getState().isTokenExpired()
+        if (tokenExpired) {
+          useAuthStore.getState().clearAuth()
+          window.location.href = '/auth/login?reason=session_expired'
+        }
+
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false

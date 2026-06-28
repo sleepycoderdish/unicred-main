@@ -81,12 +81,16 @@ export function useAuth() {
     setError('')
     try {
       // REQUEST : POST /api/auth/login  { email, password }
-      // RESPONSE: { accessToken: string }
+      // RESPONSE: { accessToken: string, refreshToken: string, user: {...} }
       //   accessToken payload = { userId, role, schoolId, iat, exp }
-      const { accessToken } = await authApi.login(formData)
+      const loginRes = await authApi.login(formData)
 
-      // Store token in memory and decode user info (role, userId, schoolId)
-      setTokens(accessToken)
+      // API may return tokens at the top level or nested under .data
+      const tokenData = loginRes?.data ?? loginRes
+      const { accessToken, refreshToken } = tokenData
+
+      // Store both tokens — refreshToken sent in body on next /auth/refresh call
+      setTokens(accessToken, refreshToken)
 
       // Read role from store (just set above) and navigate to its dashboard
       const role      = useAuthStore.getState().user?.role
@@ -99,13 +103,12 @@ export function useAuth() {
       const { message, status, fieldErrors } = parseApiError(err)
 
       // ── Unverified email interception ──────────────────────
-      // Backend signals this with 403 + code: 'EMAIL_NOT_VERIFIED'
-      // (some backends use 401 — adjust the status check if needed)
+      // Backend returns 401 with "Please verify your email before logging in"
+      // Matching on message text is safer than status code alone — a wrong
+      // password also returns 401, so we need the message to distinguish.
       const isUnverified =
-        status === 403 &&
-        (fieldErrors?.code === 'EMAIL_NOT_VERIFIED' ||
-         message?.toLowerCase().includes('email') &&
-         message?.toLowerCase().includes('verif'))
+        (status === 401 || status === 403) &&
+        message?.toLowerCase().includes('verify your email')
 
       if (isUnverified) {
         // Redirect to verify-email.
