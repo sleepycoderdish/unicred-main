@@ -35,3 +35,13 @@ export function useDeleteHodAssignment() {
     onError: (err) => toastError(parseApiError(err).message),
   })
 }
+
+export function usePatchHodAssignment() {
+  const qc = useQueryClient()
+  const { toastSuccess, toastError } = useUiStore()
+  return useMutation({
+    mutationFn: ({ id, ...payload }) => api.patchHodAssignment(id, payload),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: KEYS.all() }); toastSuccess('Assignment updated.') },
+    onError: (err) => toastError(parseApiError(err).message),
+  })
+}

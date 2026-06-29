@@ -31,3 +31,18 @@ export async function deleteHodAssignment(id) {
   const res = await apiClient.delete(`/api/faculty-assignments/${id}`)
   return res.data
 }
+
+/**
+ * patchHodAssignment — modify an existing faculty assignment.
+ * HOD can change the faculty, subject, semester or batch year.
+ *
+ * REQUEST  : PATCH /api/faculty-assignments/:id
+ *   Header : Authorization: Bearer <accessToken>
+ *   Body   : any subset of { facultyId, subjectId, semesterNumber, batchYear }
+ *
+ * RESPONSE : 200 { data: { ...updatedAssignment } }
+ */
+export async function patchHodAssignment(id, payload) {
+  const res = await apiClient.patch(`/api/faculty-assignments/${id}`, payload)
+  return res.data
+}

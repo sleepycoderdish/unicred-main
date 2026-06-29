@@ -78,6 +78,7 @@ const Landing          = lazy(() => import('@/pages/landing/Landing'))
 const GradingSystemPage  = lazy(() => import('@/pages/admin/grading/GradingSystemPage'))
 
 // Lazy — HOD sub-pages
+const StudentRegistrationPage = lazy(() => import('@/pages/hod/students/StudentRegistrationPage'))
 const PublicationsPage   = lazy(() => import('@/pages/hod/results/PublicationsPage'))
 const PublicationReview  = lazy(() => import('@/pages/hod/results/PublicationReview'))
 const ReappearReviewPage = lazy(() => import('@/pages/hod/reappear/ReappearReviewPage'))
@@ -93,6 +94,7 @@ const AssignmentsPage    = lazy(() => import('@/pages/faculty/assignments/Assign
 const AssessmentsPage    = lazy(() => import('@/pages/faculty/assessments/AssessmentsPage'))
 
 // Lazy — Student sub-pages
+const MySessionPage      = lazy(() => import('@/pages/student/session/MySessionPage'))
 const ResultsPage        = lazy(() => import('@/pages/student/results/ResultsPage'))
 const CgpaPage           = lazy(() => import('@/pages/student/results/CgpaPage'))
 const StudentReappearPage= lazy(() => import('@/pages/student/reappear/ReappearPage'))
@@ -148,7 +150,8 @@ const router = createBrowserRouter([
   { path: '/hod/results',          element: guardedPage(<PublicationsPage />,   [ROLES.HOD]) },
   { path: '/hod/results/:id',      element: guardedPage(<PublicationReview />,  [ROLES.HOD]) },
   { path: '/hod/reappear',         element: guardedPage(<ReappearReviewPage />, [ROLES.HOD]) },
-  { path: '/hod/timetable',        element: guardedPage(<TimetablePage />,      [ROLES.HOD]) },
+  { path: '/hod/timetable',        element: guardedPage(<TimetablePage />,            [ROLES.HOD]) },
+  { path: '/hod/students',         element: guardedPage(<StudentRegistrationPage />, [ROLES.HOD]) },
 
   // Faculty sub-routes
   { path: '/faculty/assignments',  element: guardedPage(<AssignmentsPage />,    [ROLES.FACULTY, ROLES.HOD]) },
@@ -160,6 +163,7 @@ const router = createBrowserRouter([
   { path: '/student/results',      element: guardedPage(<ResultsPage />,        [ROLES.STUDENT]) },
   { path: '/student/cgpa',         element: guardedPage(<CgpaPage />,           [ROLES.STUDENT]) },
   { path: '/student/reappear',     element: guardedPage(<StudentReappearPage />, [ROLES.STUDENT]) },
+  { path: '/student/session',      element: guardedPage(<MySessionPage />,          [ROLES.STUDENT]) },
 
   // 404
   { path: '*', element: <NotFound /> },
