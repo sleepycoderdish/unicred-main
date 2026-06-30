@@ -32,7 +32,7 @@ import apiClient from '@/api/client'
  * @param {{ sessionId, studentIds, semesterNumber, batchYear }} payload
  */
 export async function registerStudentsForSession(payload) {
-  const res = await apiClient.post('/api/studentReg/register-session', payload)
+  const res = await apiClient.post('/api/studentReg/register-session/bulk', payload)
   return res.data
 }
 

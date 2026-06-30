@@ -73,14 +73,35 @@ function RegisterTab() {
     semesterNumber: semesterNumber ? Number(semesterNumber) : undefined,
   })
 
+  // Fetch students already registered in the selected session so we can
+  // exclude them from the candidate list — picking an already-registered
+  // student would 409 on submit. The hook is disabled (returns []) when
+  // no session is selected yet.
+  const { data: registrations = [] } = useStudentsInSession(sessionId ? Number(sessionId) : null)
+
+  // Build a fast-lookup Set of already-registered student IDs.
+  // When sessionId is empty the hook returns [] so the Set is empty and
+  // nothing is filtered out of the candidate list.
+  const registeredStudentIds = useMemo(
+    () => new Set(registrations.map(r => r.student?.id)),
+    [registrations]
+  )
+
+  // Remove students who are already registered in the chosen session.
+  // This is the list we actually render and operate on.
+  const eligibleStudents = useMemo(
+    () => students.filter(st => !registeredStudentIds.has(st.id)),
+    [students, registeredStudentIds]
+  )
+
   // Only upcoming / active sessions can receive registrations.
   // Labels show the session NAME + academic year (never the numeric id).
   const sessionOpts = sessions
     .filter(s => ['upcoming', 'active'].includes(s.status))
     .map(s => ({ value: String(s.id), label: sessionLabel(s) }))
 
-  // Are all currently listed students selected? (drives the "select all" box)
-  const allSelected = students.length > 0 && students.every(st => selectedIds.has(st.id))
+  // Are all currently listed eligible students selected? (drives the "select all" box)
+  const allSelected = eligibleStudents.length > 0 && eligibleStudents.every(st => selectedIds.has(st.id))
 
   // Toggle a single student in/out of the selection set.
   function toggleOne(studentId) {
@@ -92,15 +113,15 @@ function RegisterTab() {
     })
   }
 
-  // Select-all / clear-all toggle for the whole visible list.
+  // Select-all / clear-all toggle for the whole eligible list.
   function toggleAll() {
     setSelectedIds(prev => {
-      if (students.every(st => prev.has(st.id))) {
+      if (eligibleStudents.every(st => prev.has(st.id))) {
         // Everything is selected → clear all.
         return new Set()
       }
-      // Otherwise select every listed student.
-      return new Set(students.map(st => st.id))
+      // Otherwise select every eligible student.
+      return new Set(eligibleStudents.map(st => st.id))
     })
   }
 
@@ -206,10 +227,10 @@ function RegisterTab() {
                 Could not load students. Please check the student-list endpoint.
               </p>
             </div>
-          ) : students.length === 0 ? (
+          ) : eligibleStudents.length === 0 ? (
             <div style={{ padding: '20px', textAlign: 'center', border: '1px dashed var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
               <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                No students found for this batch and semester.
+                No unregistered students found for this batch and semester.
               </p>
             </div>
           ) : (
@@ -221,17 +242,17 @@ function RegisterTab() {
                 cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)',
               }}>
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} />
-                Select all ({selectedIds.size}/{students.length} selected)
+                Select all ({selectedIds.size}/{eligibleStudents.length} selected)
               </label>
 
-              {/* One row per student */}
+              {/* One row per eligible student (already-registered students are excluded) */}
               <div style={{ maxHeight: 280, overflowY: 'auto' }}>
-                {students.map((st, idx) => (
+                {eligibleStudents.map((st, idx) => (
                   <label
                     key={st.id}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
-                      borderBottom: idx < students.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                      borderBottom: idx < eligibleStudents.length - 1 ? '1px solid var(--border-subtle)' : 'none',
                       cursor: 'pointer',
                     }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-elevated)'}

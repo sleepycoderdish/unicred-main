@@ -24,7 +24,7 @@ export const ROLE_CONFIG = {
       { label: 'Internal Marks',   path: '/student/assessments',      icon: 'ClipboardList' },
       { label: 'Students',         path: '/hod/students',             icon: 'Users' },
       { label: 'Timetable',        path: '/student/timetable',        icon: 'Clock' },
-      { label: 'My Profile',       path: '/student/profile',          icon: 'User' },
+      { label: 'My Profile',       path: '/student/myProfile',       icon: 'User' },
     ],
   },
 

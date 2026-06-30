@@ -52,7 +52,7 @@ export function useRegisterStudents() {
     mutationFn: api.registerStudentsForSession,
     onSuccess: (res, vars) => {
       qc.invalidateQueries({ queryKey: KEYS.sessionStudents(vars.sessionId) })
-      const { registered = 0, skipped = 0 } = res.data ?? {}
+      const { registered = 0, skipped = 0 } = res.data?.summary ?? {}
       toastSuccess(
         skipped > 0
           ? `${registered} students registered. ${skipped} skipped (already in a session).`

@@ -6,14 +6,14 @@
 // from a list (roll number + name) instead of typing raw database IDs.
 //
 // REAL ENDPOINT (confirmed):
-//   GET /api/students/:departmentId
-//     - :departmentId is the DEPARTMENT id (e.g. 30001), NOT a student id.
+//   GET /api/students/filter
+//     - All filters are sent as QUERY PARAMS (nothing goes in the URL path).
 //     - Callable by hod / admin / faculty.
-//     - Returns the students of that department.
-//     - Optional query params can be used for extra sorting/filtering
-//       (e.g. batchYear, semesterNumber). We pass them through, and ALSO
-//       filter again on the client so the result is correct even if the
-//       backend ignores a particular query param.
+//     - Supported query params:
+//         departmentId   — the department to list students for (e.g. 30001)
+//         batchYear      — (optional) filter by batch year
+//         semesterNumber — (optional) filter by semester number
+//     - Empty/falsy params are omitted from the request.
 //
 //   Each student is expected to look like:
 //     { id, rollNo, batchYear, currentSemester, branch,
@@ -27,17 +27,18 @@ import apiClient from '@/api/client'
  *
  * The school is taken from the token automatically (never sent).
  *
- * @param {number} departmentId - department whose students to list (path param)
+ * @param {number} departmentId - department whose students to list (query param)
  * @param {{ batchYear?: number, semesterNumber?: number }} [filters] - optional query params
  * @returns {Promise<object>} the raw API response (envelope or array)
  */
 export async function fetchStudents(departmentId, filters = {}) {
   // Build query params, dropping empty values so we never send "?batchYear=".
   const params = {}
+  if (departmentId)            params.departmentId   = departmentId
   if (filters.batchYear)      params.batchYear      = filters.batchYear
   if (filters.semesterNumber) params.semesterNumber = filters.semesterNumber
 
-  // departmentId goes in the PATH, not the query string.
-  const res = await apiClient.get(`/api/students/${departmentId}`, { params })
+  // All params go in the query string — /filter is a fixed path with no :id segment.
+  const res = await apiClient.get('/api/students/filter', { params })
   return res.data
 }

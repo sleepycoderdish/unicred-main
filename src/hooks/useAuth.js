@@ -19,6 +19,15 @@ import * as authApi from '@/api/auth.api'
 import { parseApiError } from '@/utils/errorHandler'
 import { getDashboardPath } from '@/config/roleConfig'
 import { ROUTES } from '@/config/constants'
+// Shared React Query cache instance — imported so we can wipe it on logout.
+// Wiping the cache on logout is the safest way to guarantee that no
+// user-specific data (notifications, results, session info, etc.) cached
+// during User A's session can ever be seen by User B who logs in next,
+// even for a brief moment before queries refetch. The per-user cache key
+// scoping in individual hooks (e.g. useNotifications.js) is the structural
+// fix, but queryClient.clear() on logout is belt-and-suspenders insurance
+// that covers every query in the app, not just notifications.
+import { queryClient } from '@/config/queryClient'
 
 export function useAuth() {
   const navigate = useNavigate()
@@ -157,6 +166,10 @@ export function useAuth() {
       // Even if the API call fails, clear local auth state.
       // The backend will eventually expire the refresh token.
     } finally {
+      // Wipe the entire React Query cache before clearing auth state.
+      // This ensures no stale, user-specific data (notifications, results,
+      // sessions, etc.) is visible to the next user who logs in on this tab.
+      queryClient.clear()
       clearAuth()
       navigate(ROUTES.LOGIN, { replace: true })
       setLoading(false)
@@ -175,6 +188,9 @@ export function useAuth() {
       const { message } = parseApiError(err)
       toastError(message)
     } finally {
+      // Same cache wipe as logout — all devices logout also switches
+      // the local user context, so cached data must not survive.
+      queryClient.clear()
       clearAuth()
       navigate(ROUTES.LOGIN, { replace: true })
       setLoading(false)

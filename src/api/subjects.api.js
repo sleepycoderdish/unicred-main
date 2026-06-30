@@ -75,3 +75,20 @@ export async function deleteOffering(id) {
   const res = await apiClient.delete(`/api/courses/offerings/${id}`)
   return res.data
 }
+
+/**
+ * GET /api/courses/:id/view
+ *
+ * Fetch a single subject's details. Available to any authenticated role
+ * (student, faculty, hod, admin), unlike the plain GET /courses/:id which
+ * is admin/hod only.
+ *
+ * RESPONSE: { data: { id, courseCode, name, credits, subjectType,
+ *                      passingMarks, totalMarks, isActive } }
+ *
+ * @param {number|string} id - the course/subject id
+ */
+export async function fetchSubjectForAnyRole(id) {
+  const res = await apiClient.get(`/api/courses/${id}/view`)
+  return res.data
+}

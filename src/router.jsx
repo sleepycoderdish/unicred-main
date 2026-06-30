@@ -101,10 +101,13 @@ const AssignmentsPage    = lazy(() => import('@/pages/faculty/assignments/Assign
 const AssessmentsPage    = lazy(() => import('@/pages/faculty/assessments/AssessmentsPage'))
 
 // Lazy — Student sub-pages
-const MySessionPage      = lazy(() => import('@/pages/student/session/MySessionPage'))
-const ResultsPage        = lazy(() => import('@/pages/student/results/ResultsPage'))
-const CgpaPage           = lazy(() => import('@/pages/student/results/CgpaPage'))
-const StudentReappearPage= lazy(() => import('@/pages/student/reappear/ReappearPage'))
+const MySessionPage        = lazy(() => import('@/pages/student/session/MySessionPage'))
+const ResultsPage          = lazy(() => import('@/pages/student/results/ResultsPage'))
+const CgpaPage             = lazy(() => import('@/pages/student/results/CgpaPage'))
+const StudentReappearPage  = lazy(() => import('@/pages/student/reappear/ReappearPage'))
+const MyProfilePage        = lazy(() => import('@/pages/student/profile/StudentProfilePage'))
+const StudentSubjectsPage  = lazy(() => import('@/pages/student/subjects/SubjectsPage'))
+const SubjectDetailPage    = lazy(() => import('@/pages/student/subjects/SubjectDetailPage'))
 
 const Fallback = () => <PageLoader message="Loading..." />
 
@@ -172,10 +175,13 @@ const router = createBrowserRouter([
   { path: '/faculty/reappear',     element: guardedPage(<ReappearMarksPage />,  [ROLES.FACULTY, ROLES.HOD]) },
 
   // Student sub-routes
-  { path: '/student/results',      element: guardedPage(<ResultsPage />,        [ROLES.STUDENT]) },
-  { path: '/student/cgpa',         element: guardedPage(<CgpaPage />,           [ROLES.STUDENT]) },
-  { path: '/student/reappear',     element: guardedPage(<StudentReappearPage />, [ROLES.STUDENT]) },
-  { path: '/student/session',      element: guardedPage(<MySessionPage />,          [ROLES.STUDENT]) },
+  { path: '/student/results',              element: guardedPage(<ResultsPage />,          [ROLES.STUDENT]) },
+  { path: '/student/cgpa',                 element: guardedPage(<CgpaPage />,             [ROLES.STUDENT]) },
+  { path: '/student/reappear',             element: guardedPage(<StudentReappearPage />,  [ROLES.STUDENT]) },
+  { path: '/student/session',              element: guardedPage(<MySessionPage />,         [ROLES.STUDENT]) },
+  { path: '/student/myProfile',            element: guardedPage(<MyProfilePage />,         [ROLES.STUDENT]) },
+  { path: '/student/subjects',             element: guardedPage(<StudentSubjectsPage />,   [ROLES.STUDENT]) },
+  { path: '/student/subjects/:subjectId',  element: guardedPage(<SubjectDetailPage />,     [ROLES.STUDENT]) },
 
   // 404
   { path: '*', element: <NotFound /> },

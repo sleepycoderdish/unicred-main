@@ -42,7 +42,7 @@ export default function MySessionPage() {
 
   // Fetch subjects offered in the current session
   // Only runs once we have the sessionId
-  const sessionId = registration?.sessionId ?? null
+  const sessionId = registration?.session?.id ?? null
   const { data: offerings = [], isLoading: offLoading } = useOfferings(sessionId)
 
   if (isLoading) {

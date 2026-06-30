@@ -101,3 +101,23 @@ export function useDeleteOffering() {
     onError: (err) => toastError(parseApiError(err).message),
   })
 }
+
+/**
+ * useSubjectDetail — fetch a single subject by id.
+ *
+ * Uses the /view endpoint so it works for students (the plain
+ * GET /courses/:id is restricted to admin/hod).
+ *
+ * @param {number|string|null} subjectId
+ */
+export function useSubjectDetail(subjectId) {
+  return useQuery({
+    queryKey: ['subject-detail', subjectId],
+    queryFn: async () => {
+      const res = await api.fetchSubjectForAnyRole(subjectId)
+      // res is the backend JSON envelope: { success: true, data: {...subject} }
+      return res?.data ?? null
+    },
+    enabled: !!subjectId,
+  })
+}
