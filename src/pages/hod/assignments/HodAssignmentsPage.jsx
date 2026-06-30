@@ -12,7 +12,7 @@
 // explicitly assigned to — assignments are the authorisation gate.
 // ─────────────────────────────────────────────────────────────
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { PageHeader }       from '@/components/ui/PageHeader'
 import { Button }           from '@/components/ui/Button'
 import { Select }           from '@/components/ui/Select'
@@ -28,7 +28,8 @@ import {
 } from '@/hooks/useHodAssignments'
 import { useSessions }  from '@/hooks/useSessions'
 import { useSubjects }  from '@/hooks/useSubjects'
-import { useFaculties } from '@/hooks/useFaculties'
+import { useFaculties, useMyDepartmentId } from '@/hooks/useFaculties'
+import { sessionLabel } from '@/utils/formatters'
 
 // ── Shared form fields used by both Create and Edit modals ────
 function AssignmentForm({ form, setForm, sessions, subjects, faculties }) {
@@ -41,8 +42,10 @@ function AssignmentForm({ form, setForm, sessions, subjects, faculties }) {
     label: `${s.courseCode} — ${s.name}`,
   }))
 
+  // IMPORTANT: the backend expects the Faculty.id here (not the userId).
+  // Sending a userId causes "Faculty member not found in this school".
   const facultyOpts = faculties.map(f => ({
-    value: String(f.userId),
+    value: String(f.id),
     label: `${f.user.name} (${f.designation})`,
   }))
 
@@ -103,7 +106,13 @@ function CreateAssignmentModal({ isOpen, onClose }) {
 
   const { data: sessions  = [] } = useSessions()
   const { data: subjects  = [] } = useSubjects()
-  const { data: faculties = [] } = useFaculties()
+  // Resolve the HOD's department to filter faculty (Issue 3). We try the HOD's
+  // own faculty record first; if that isn't available, we fall back to the
+  // department of the SELECTED session (sessions belong to the HOD's dept).
+  const myDeptId = useMyDepartmentId()
+  const selectedSession = sessions.find(s => String(s.id) === String(form.sessionId))
+  const deptId = myDeptId ?? selectedSession?.departmentId ?? null
+  const { data: faculties = [] } = useFaculties(deptId)
   const { mutate: create, isPending } = useCreateHodAssignment()
 
   function handleSubmit(e) {
@@ -156,7 +165,11 @@ function EditAssignmentModal({ assignment, isOpen, onClose }) {
 
   const { data: sessions  = [] } = useSessions()
   const { data: subjects  = [] } = useSubjects()
-  const { data: faculties = [] } = useFaculties()
+  // Same department resolution as the create modal (Issue 3).
+  const myDeptId = useMyDepartmentId()
+  const selectedSession = sessions.find(s => String(s.id) === String(form.sessionId))
+  const deptId = myDeptId ?? selectedSession?.departmentId ?? null
+  const { data: faculties = [] } = useFaculties(deptId)
   const { mutate: patch, isPending } = usePatchHodAssignment()
 
   function handleSubmit(e) {
@@ -200,21 +213,23 @@ function EditAssignmentModal({ assignment, isOpen, onClose }) {
 export default function HodAssignmentsPage() {
   const [createOpen,    setCreateOpen]    = useState(false)
   const [editTarget,    setEditTarget]    = useState(null)   // assignment object
-  const [sessionFilter, setSessionFilter] = useState('')
-
-  const { data: assignments = [], isLoading }   = useHodAssignments()
   const { data: sessions    = [] }              = useSessions()
+  // The list endpoint needs a session, so default to the first one and let the
+  // user switch. We never send "all sessions" (the backend would 400).
+  const [sessionFilter, setSessionFilter] = useState('')
+  useEffect(() => {
+    if (!sessionFilter && sessions.length) setSessionFilter(String(sessions[0].id))
+  }, [sessions, sessionFilter])
+
+  const { data: assignments = [], isLoading }   = useHodAssignments(sessionFilter)
   const { mutate: remove, isPending: removing } = useDeleteHodAssignment()
 
-  const sessionOpts = [
-    { value: '', label: 'All sessions' },
-    ...sessions.map(s => ({ value: String(s.id), label: s.name })),
-  ]
+  // Sessions are listed by name; there is no "all" option because the backend
+  // returns assignments per session.
+  const sessionOpts = sessions.map(s => ({ value: String(s.id), label: sessionLabel(s) }))
 
-  // Apply optional session filter
-  const filtered = sessionFilter
-    ? assignments.filter(a => String(a.sessionId) === sessionFilter)
-    : assignments
+  // Server already returns this session's rows; no extra client filter needed.
+  const filtered = assignments
 
   return (
     <div>

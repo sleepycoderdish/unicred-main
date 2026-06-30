@@ -2,14 +2,12 @@
 import apiClient from '@/api/client'
 
 /**
- * GET /api/faculty-assignments
- * All assignments for the HOD's department.
- * RESPONSE: { data: [{ id, sessionId, facultyId, subjectId, semesterNumber, batchYear,
- *                      faculty: { user: { name, email } }, subject: { name, courseCode },
- *                      session: { name, status } }] }
+ * GET /api/faculty-assignments?sessionId=:id
+ * Assignments for ONE session (the backend list endpoint requires a session).
  */
-export async function fetchHodAssignments() {
-  const res = await apiClient.get('/api/faculty-assignments')
+export async function fetchHodAssignments(sessionId) {
+  const params = sessionId ? { sessionId: Number(sessionId) } : {}
+  const res = await apiClient.get('/api/faculty-assignments', { params })
   return res.data
 }
 

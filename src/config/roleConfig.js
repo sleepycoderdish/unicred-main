@@ -33,6 +33,7 @@ export const ROLE_CONFIG = {
     label: 'Faculty',
     nav: [
       { label: 'Dashboard',        path: '/faculty',                  icon: 'LayoutDashboard' },
+      { label: 'My Profile',       path: '/faculty/profile',          icon: 'User' },
       { label: 'My Assignments',   path: '/faculty/assignments',      icon: 'BookOpen' },
       { label: 'Attendance',       path: '/faculty/attendance',       icon: 'CalendarCheck' },
       { label: 'Upload Marks',     path: '/faculty/marks',            icon: 'Upload' },
@@ -49,6 +50,8 @@ export const ROLE_CONFIG = {
     label: 'Head of Department',
     nav: [
       { label: 'Dashboard',        path: '/hod',                      icon: 'LayoutDashboard' },
+      { label: 'Invite Faculty',   path: '/hod/invite',               icon: 'UserPlus' },
+      { label: 'My Profile',       path: '/faculty/profile',          icon: 'User' },
       { label: 'Sessions',         path: '/hod/sessions',             icon: 'CalendarRange' },
       { label: 'Subjects',         path: '/hod/subjects',             icon: 'BookOpen' },
       { label: 'Assignments',      path: '/hod/assignments',          icon: 'Users' },
@@ -65,6 +68,7 @@ export const ROLE_CONFIG = {
     label: 'Admin',
     nav: [
       { label: 'Dashboard',        path: '/admin',                    icon: 'LayoutDashboard' },
+      { label: 'Invite Member',    path: '/admin/invite',             icon: 'UserPlus' },
       { label: 'Timetables',       path: '/admin/timetables',         icon: 'Clock' },
       { label: 'Departments',      path: '/admin/departments',        icon: 'Building2' },
       { label: 'Settings',         path: '/admin/settings',           icon: 'Settings' },

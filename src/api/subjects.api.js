@@ -52,7 +52,9 @@ export async function deactivateSubject(id) {
  * RESPONSE: { data: [{ id, sessionId, subjectId, semesterNumber, batchYear, subject: {...} }] }
  */
 export async function fetchOfferings(sessionId) {
-  const res = await apiClient.get('/api/courses/offerings', { params: { sessionId } })
+  // Backend route is GET /api/courses/offerings/:sessionId — the sessionId
+  // goes in the PATH (not a query string), and must be an integer.
+  const res = await apiClient.get(`/api/courses/offerings/${Number(sessionId)}`)
   return res.data
 }
 

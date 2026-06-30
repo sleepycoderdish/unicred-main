@@ -4,6 +4,19 @@ import * as api from '@/api/subjects.api'
 import useUiStore from '@/store/ui.store'
 import { parseApiError } from '@/utils/errorHandler'
 
+// pickArray — always return an array no matter how the backend wrapped it.
+// (Same helper used for sessions; defined locally so there's no extra import.)
+// Handles: [...] | { data: [...] } | { data: { data: [...] } } |
+//          { courses: [...] } / { offerings: [...] } (first array property).
+function pickArray(res) {
+  if (Array.isArray(res)) return res
+  if (Array.isArray(res?.data)) return res.data
+  if (Array.isArray(res?.data?.data)) return res.data.data
+  const firstArray = (obj) =>
+    obj && typeof obj === 'object' ? Object.values(obj).find(Array.isArray) : undefined
+  return firstArray(res) || firstArray(res?.data) || []
+}
+
 const KEYS = {
   all:      () => ['subjects'],
   offerings: (sessionId) => ['offerings', sessionId],
@@ -14,19 +27,23 @@ export function useSubjects() {
     queryKey: KEYS.all(),
     queryFn: async () => {
       const res = await api.fetchSubjects()
-      return res.data ?? []
+      // pickArray means a freshly-created subject can't read as "empty".
+      return pickArray(res)
     },
   })
 }
 
 export function useOfferings(sessionId) {
+  // Normalise to a number so the cache key matches everywhere (the select
+  // gives us a string) and the backend gets an integer.
+  const sid = sessionId ? Number(sessionId) : null
   return useQuery({
-    queryKey: KEYS.offerings(sessionId),
+    queryKey: KEYS.offerings(sid),
     queryFn: async () => {
-      const res = await api.fetchOfferings(sessionId)
-      return res.data ?? []
+      const res = await api.fetchOfferings(sid)
+      return pickArray(res)
     },
-    enabled: !!sessionId,
+    enabled: !!sid,
   })
 }
 
@@ -65,7 +82,12 @@ export function useCreateOffering() {
   const { toastSuccess, toastError } = useUiStore()
   return useMutation({
     mutationFn: api.createOffering,
-    onSuccess: (_, vars) => { qc.invalidateQueries({ queryKey: KEYS.offerings(vars.sessionId) }); toastSuccess('Course offering added.') },
+    onSuccess: () => {
+      // Prefix-invalidate ALL offering lists (avoids a Number/String key
+      // mismatch that previously left the list showing "no offerings").
+      qc.invalidateQueries({ queryKey: ['offerings'] })
+      toastSuccess('Course offering added.')
+    },
     onError: (err) => toastError(parseApiError(err).message),
   })
 }

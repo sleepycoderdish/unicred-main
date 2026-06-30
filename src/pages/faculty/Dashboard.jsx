@@ -91,7 +91,7 @@ export default function FacultyDashboard() {
     <div>
       <PageHeader
         title={`Welcome, ${user?.name?.split(' ')[0] ?? 'Faculty'}`}
-        subtitle={`Faculty dashboard · ${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}`}
+        subtitle={`Faculty · School #${user?.schoolId ?? '—'} · ${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}`}
       />
 
       {/* KPI row */}

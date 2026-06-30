@@ -4,15 +4,31 @@ import * as api from '@/api/hodAssignments.api'
 import useUiStore from '@/store/ui.store'
 import { parseApiError } from '@/utils/errorHandler'
 
+// pickArray — return an array from any response shape (envelope / raw / nested).
+function pickArray(res) {
+  if (Array.isArray(res)) return res
+  if (Array.isArray(res?.data)) return res.data
+  if (Array.isArray(res?.data?.data)) return res.data.data
+  const firstArray = (o) => (o && typeof o === 'object' ? Object.values(o).find(Array.isArray) : undefined)
+  return firstArray(res) || firstArray(res?.data) || []
+}
+
 const KEYS = { all: () => ['hod-assignments'] }
 
-export function useHodAssignments() {
+/**
+ * useHodAssignments — assignments for ONE session.
+ * The backend list endpoint requires a sessionId, so the query stays disabled
+ * until a session is chosen.
+ */
+export function useHodAssignments(sessionId) {
+  const sid = sessionId ? Number(sessionId) : null
   return useQuery({
-    queryKey: KEYS.all(),
+    queryKey: ['hod-assignments', sid],
     queryFn: async () => {
-      const res = await api.fetchHodAssignments()
-      return res.data ?? []
+      const res = await api.fetchHodAssignments(sid)
+      return pickArray(res)
     },
+    enabled: !!sid,
   })
 }
 

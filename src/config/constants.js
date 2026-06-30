@@ -26,6 +26,7 @@ export const AUTH_ENDPOINTS = {
   FORGOT_PASSWORD:  '/api/auth/forgot-password',
   RESET_PASSWORD:   '/api/auth/reset-password',
   REFRESH_TOKEN:    '/api/auth/refresh',           // Backend should implement this
+  INVITE:           '/api/auth/invite',            // admin/hod invite a new user (needs auth token)
 }
 
 // ── Role constants ────────────────────────────────────────────

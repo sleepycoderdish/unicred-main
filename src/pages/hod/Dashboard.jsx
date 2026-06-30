@@ -81,7 +81,7 @@ export default function HodDashboard() {
     <div>
       <PageHeader
         title={`Welcome, ${user?.name?.split(' ')[0] ?? 'HOD'}`}
-        subtitle={`Head of Department · ${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}`}
+        subtitle={`Head of Department · School #${user?.schoolId ?? '—'} · ${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}`}
       />
 
       {/* KPI row */}

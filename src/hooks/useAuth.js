@@ -75,8 +75,10 @@ export function useAuth() {
    *   since they didn't just register and may already have a valid OTP).
    *
    * @param {{ email: string, password: string }} formData
+   * @param {{ from?: string|null }} [options] - where to go on success (defaults to the role dashboard)
+   * @returns {Promise<boolean>} true if login succeeded, false otherwise (wrong password, unverified, etc.)
    */
-  const login = useCallback(async (formData) => {
+  const login = useCallback(async (formData, options = {}) => {
     setLoading(true)
     setError('')
     try {
@@ -87,42 +89,55 @@ export function useAuth() {
 
       // API may return tokens at the top level or nested under .data
       const tokenData = loginRes?.data ?? loginRes
-      const { accessToken, refreshToken } = tokenData
+      const { accessToken, refreshToken, user } = tokenData
 
-      // Store both tokens — refreshToken sent in body on next /auth/refresh call
-      setTokens(accessToken, refreshToken)
+      // Store tokens + the user object so the dashboard can greet by name.
+      // (The JWT itself does not contain the name — only the user object does.)
+      setTokens(accessToken, refreshToken, user)
 
-      // Read role from store (just set above) and navigate to its dashboard
-      const role      = useAuthStore.getState().user?.role
-      const dashboard = getDashboardPath(role)
+      // Decide where to go: the page the user originally wanted (options.from),
+      // otherwise their role's dashboard.
+      const role        = useAuthStore.getState().user?.role
+      const destination = options.from || getDashboardPath(role)
 
       toastSuccess('Welcome back!')
-      navigate(dashboard, { replace: true })
+      navigate(destination, { replace: true })
+      return true // <-- tells the caller login succeeded
 
     } catch (err) {
-      const { message, status, fieldErrors } = parseApiError(err)
+      const { message, status, code, fieldErrors } = parseApiError(err)
 
       // ── Unverified email interception ──────────────────────
-      // Backend returns 401 with "Please verify your email before logging in"
-      // Matching on message text is safer than status code alone — a wrong
-      // password also returns 401, so we need the message to distinguish.
-      const isUnverified =
-        (status === 401 || status === 403) &&
-        message?.toLowerCase().includes('verify your email')
+      // The backend blocks login until the email is verified. Different
+      // backends phrase this differently, so we match several signals instead
+      // of one exact string:
+      //   - a machine code like EMAIL_NOT_VERIFIED / NOT_VERIFIED, OR
+      //   - any message that mentions both "verif" and "email", OR
+      //   - a message that says "not verified".
+      // We only treat it as "unverified" on a 401/403 (an auth-type failure),
+      // so a plain wrong password (also 401) is NOT misread as unverified.
+      const msg = (message || '').toLowerCase()
+      const codeStr = (code || '').toUpperCase()
+      const looksUnverified =
+        codeStr.includes('VERIF') ||                 // EMAIL_NOT_VERIFIED, NOT_VERIFIED, ...
+        (msg.includes('verif') && msg.includes('email')) ||
+        msg.includes('not verified')
+
+      const isUnverified = (status === 401 || status === 403) && looksUnverified
 
       if (isUnverified) {
         // Redirect to verify-email.
-        // source: 'login' tells VerifyEmail NOT to auto-send OTP on mount —
-        // the user may already have a valid code in their inbox.
+        // source: 'login' tells VerifyEmail this came from a login attempt.
         navigate(ROUTES.VERIFY_EMAIL, {
           state: { email: formData.email, source: 'login' },
         })
-        return // Don't set error — this is a normal redirect, not a failure
+        return false // login did NOT succeed — caller must not redirect anywhere else
       }
 
       // ── All other errors (wrong password, account locked, etc.) ──
       setError(message)
       toastError(message)
+      return false
 
     } finally {
       setLoading(false)

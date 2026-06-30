@@ -4,6 +4,40 @@ import * as api from '@/api/sessions.api'
 import useUiStore from '@/store/ui.store'
 import { parseApiError } from '@/utils/errorHandler'
 
+// ─────────────────────────────────────────────────────────────
+// pickArray — always return an array from whatever the backend sent.
+//
+// Different endpoints reply in slightly different shapes. If the UI assumes
+// only one shape, a perfectly valid response (like a list of sessions) can be
+// read as "empty" — which is exactly the "an active session exists but the
+// list shows nothing" bug. This helper normalises every common shape:
+//
+//   [ ... ]                       → used as-is
+//   { data: [ ... ] }             → inner array
+//   { data: { data: [ ... ] } }   → deepest array
+//   { sessions: [ ... ] } / etc.  → first array-valued property it finds
+//
+// It is defined locally (not imported) so this file has no extra dependency
+// that could go missing.
+// ─────────────────────────────────────────────────────────────
+function pickArray(res) {
+  if (Array.isArray(res)) return res
+  if (Array.isArray(res?.data)) return res.data
+  if (Array.isArray(res?.data?.data)) return res.data.data
+  // Fallback: look for the first array value inside the object (or its .data).
+  const firstArray = (obj) =>
+    obj && typeof obj === 'object' ? Object.values(obj).find(Array.isArray) : undefined
+  return firstArray(res) || firstArray(res?.data) || []
+}
+
+// pickOne — same idea, but for a single object response.
+function pickOne(res) {
+  if (res == null) return null
+  if (res.data?.data !== undefined) return res.data.data
+  if (res.data !== undefined) return res.data
+  return res
+}
+
 const KEYS = {
   all:  () => ['sessions'],
   byId: (id) => ['sessions', id],
@@ -14,7 +48,9 @@ export function useSessions() {
     queryKey: KEYS.all(),
     queryFn: async () => {
       const res = await api.fetchSessions()
-      return res.data ?? []
+      // pickArray copes with any response shape, so a real session list can
+      // never be mistaken for "empty".
+      return pickArray(res)
     },
   })
 }
@@ -24,7 +60,7 @@ export function useSessionById(id) {
     queryKey: KEYS.byId(id),
     queryFn: async () => {
       const res = await api.fetchSessionById(id)
-      return res.data
+      return pickOne(res)
     },
     enabled: !!id,
   })

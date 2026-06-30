@@ -48,6 +48,36 @@ export function maskEmail(email) {
 }
 
 /**
+ * sessionLabel — readable label for an academic session in dropdowns.
+ * HODs recognise a session by its name + academic year, never by its numeric id.
+ * @param {{ name?: string, academicYear?: string, status?: string }} session
+ * @returns {string} e.g. "2026-27 Odd Semester (2026-27) · active"
+ */
+export function sessionLabel(session) {
+  if (!session) return ''
+  const parts = [session.name]
+  if (session.academicYear) parts.push(`(${session.academicYear})`)
+  const base = parts.filter(Boolean).join(' ')
+  return session.status ? `${base} · ${session.status}` : base
+}
+
+/**
+ * roleLabel — turns the raw role enum into a readable label for the UI.
+ * The JWT/login stores roles as lowercase enums ('hod', 'faculty', ...).
+ * @param {string} role
+ * @returns {string} e.g. 'hod' → 'Head of Department'
+ */
+export function roleLabel(role) {
+  const map = {
+    student: 'Student',
+    faculty: 'Faculty',
+    hod:     'Head of Department',
+    admin:   'Administrator',
+  }
+  return map[role] ?? (role ? role[0].toUpperCase() + role.slice(1) : 'User')
+}
+
+/**
  * getInitials — returns 1-2 initials from a full name.
  * Used for avatar fallbacks.
  * @param {string} name

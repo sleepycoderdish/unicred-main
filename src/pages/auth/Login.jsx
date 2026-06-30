@@ -81,12 +81,13 @@ export default function Login() {
 
     if (!validate()) return
 
-    await login({ email, password })
-
-    // If login succeeded, redirect to intended page (if any)
-    // The actual redirect happens inside useAuth().login() via getDashboardPath,
-    // but if 'from' exists we override it here.
-    if (from) navigate(from, { replace: true })
+    // login() now owns ALL navigation:
+    //   - success    → goes to `from` (if set) or the role dashboard
+    //   - unverified → goes to /auth/verify-email
+    //   - other error→ stays here and shows the message
+    // So we must NOT navigate again here, or we'd override the verify-email
+    // redirect on an unverified-email login.
+    await login({ email, password }, { from })
   }
 
   // Clear field error when user starts typing

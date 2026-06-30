@@ -203,3 +203,32 @@ export async function resetPassword(data) {
   })
   return res.data.data
 }
+
+// ── Invite a new user (admin / hod) ───────────────────────────
+
+/**
+ * inviteUser — admin or HOD invites a new faculty (or HOD) account.
+ *
+ * This is a PROTECTED route: the logged-in admin/HOD token is attached
+ * automatically by the Axios interceptor. The backend creates the account,
+ * generates a temporary password, and emails it to the invitee. The invitee
+ * then logs in with that password and completes their profile.
+ *
+ * REQUEST  : POST /api/auth/invite
+ *   Header : Authorization: Bearer <accessToken>  (attached automatically)
+ *   Body   : { email: string, name: string, role: "faculty" | "hod" }
+ *
+ * RESPONSE : 201
+ *   { success: true, message: "Invitation sent.", data: { userId } }
+ *
+ * @param {{ email: string, name: string, role: string }} data
+ * @returns {Promise<object>} the response body (envelope)
+ */
+export async function inviteUser(data) {
+  const res = await apiClient.post(AUTH_ENDPOINTS.INVITE, {
+    email: data.email.trim().toLowerCase(),
+    name:  data.name.trim(),
+    role:  data.role,
+  })
+  return res.data
+}

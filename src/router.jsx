@@ -76,6 +76,13 @@ const Landing          = lazy(() => import('@/pages/landing/Landing'))
 
 // Lazy — admin sub-pages
 const GradingSystemPage  = lazy(() => import('@/pages/admin/grading/GradingSystemPage'))
+const AdminInvitePage    = lazy(() => import('@/pages/admin/invite/InvitePage'))
+
+// Lazy — HOD sub-pages
+const HodInvitePage      = lazy(() => import('@/pages/hod/invite/InvitePage'))
+
+// Lazy — invited-member profile completion (faculty + hod share this page)
+const FacultyProfilePage = lazy(() => import('@/pages/faculty/profile/ProfilePage'))
 
 // Lazy — HOD sub-pages
 const StudentRegistrationPage = lazy(() => import('@/pages/hod/students/StudentRegistrationPage'))
@@ -142,6 +149,7 @@ const router = createBrowserRouter([
 
   // Admin sub-routes
   { path: '/admin/grading',        element: guardedPage(<GradingSystemPage />,  [ROLES.ADMIN]) },
+  { path: '/admin/invite',         element: guardedPage(<AdminInvitePage />,    [ROLES.ADMIN]) },
 
   // HOD sub-routes
   { path: '/hod/sessions',         element: guardedPage(<SessionsPage />,       [ROLES.HOD]) },
@@ -152,6 +160,10 @@ const router = createBrowserRouter([
   { path: '/hod/reappear',         element: guardedPage(<ReappearReviewPage />, [ROLES.HOD]) },
   { path: '/hod/timetable',        element: guardedPage(<TimetablePage />,            [ROLES.HOD]) },
   { path: '/hod/students',         element: guardedPage(<StudentRegistrationPage />, [ROLES.HOD]) },
+  { path: '/hod/invite',           element: guardedPage(<HodInvitePage />,           [ROLES.HOD]) },
+
+  // Invited member completes their own profile (faculty or hod)
+  { path: '/faculty/profile',      element: guardedPage(<FacultyProfilePage />, [ROLES.FACULTY, ROLES.HOD]) },
 
   // Faculty sub-routes
   { path: '/faculty/assignments',  element: guardedPage(<AssignmentsPage />,    [ROLES.FACULTY, ROLES.HOD]) },

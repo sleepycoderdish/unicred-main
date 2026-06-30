@@ -9,10 +9,12 @@ import { PageHeader }            from '@/components/ui/PageHeader'
 import { Button }                from '@/components/ui/Button'
 import { Modal }                 from '@/components/ui/Modal'
 import { Input }                 from '@/components/ui/Input'
+import { Select }                from '@/components/ui/Select'
 import { CardLoader }            from '@/components/ui/Loader'
 import { Badge }                 from '@/components/ui/Badge'
 import { usePublications, useCreatePublication, useUpdatePublicationStatus } from '@/hooks/useResultPublications'
-import { formatDate } from '@/utils/formatters'
+import { useSessions }           from '@/hooks/useSessions'
+import { formatDate, sessionLabel } from '@/utils/formatters'
 
 // Status → next allowed action
 const STATUS_ACTIONS = {
@@ -41,21 +43,41 @@ function ProgressBar({ pct }) {
 // Create publication modal
 function CreatePublicationModal({ isOpen, onClose }) {
   const [form, setForm] = useState({ sessionId: '', batchYear: '', semesterNumber: '' })
+  const [errors, setErrors] = useState({})
   const { mutate: create, isPending } = useCreatePublication()
+
+  // Load the HOD's sessions so they can pick one by NAME instead of typing a
+  // numeric id (which the HOD has no way of knowing). We send the underlying
+  // sessionId to the backend, but the HOD only ever sees the readable label.
+  const { data: sessions = [] } = useSessions()
+
+  // A publication is for a semester that has finished, so allow any session
+  // that is not archived to be chosen here. (Archived sessions are read-only.)
+  const sessionOpts = sessions
+    .filter(s => s.status !== 'archived')
+    .map(s => ({ value: String(s.id), label: sessionLabel(s) }))
 
   function handleSubmit(e) {
     e.preventDefault()
-    if (!form.sessionId || !form.batchYear || !form.semesterNumber) return
+    // Simple presence checks — show inline errors instead of silently doing nothing.
+    const errs = {}
+    if (!form.sessionId)      errs.sessionId = 'Select a session'
+    if (!form.batchYear)      errs.batchYear = 'Required e.g. 2022'
+    if (!form.semesterNumber || Number(form.semesterNumber) < 1 || Number(form.semesterNumber) > 8)
+      errs.semesterNumber = '1–8 required'
+    setErrors(errs)
+    if (Object.keys(errs).length) return
+
     create({
       sessionId:      Number(form.sessionId),
       batchYear:      Number(form.batchYear),
       semesterNumber: Number(form.semesterNumber),
-    }, { onSuccess: onClose })
+    }, { onSuccess: () => { setForm({ sessionId: '', batchYear: '', semesterNumber: '' }); onClose() } })
   }
 
   const field = (label, key, placeholder) => (
-    <Input label={label} value={form[key]}
-      onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
+    <Input label={label} value={form[key]} error={errors[key]}
+      onChange={e => { setForm(p => ({ ...p, [key]: e.target.value })); setErrors(p => ({ ...p, [key]: '' })) }}
       placeholder={placeholder} required />
   )
 
@@ -63,7 +85,16 @@ function CreatePublicationModal({ isOpen, onClose }) {
     <Modal isOpen={isOpen} onClose={onClose} title="New Result Publication" maxWidth={420}>
       <form onSubmit={handleSubmit} noValidate>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {field('Session ID', 'sessionId', 'e.g. 30001')}
+          {/* Session is chosen from a dropdown (name + academic year), not typed. */}
+          <Select
+            label="Session"
+            value={form.sessionId}
+            onChange={e => { setForm(p => ({ ...p, sessionId: e.target.value })); setErrors(p => ({ ...p, sessionId: '' })) }}
+            options={sessionOpts}
+            placeholder={sessionOpts.length ? 'Select a session' : 'No sessions available'}
+            error={errors.sessionId}
+            required
+          />
           {field('Batch Year', 'batchYear', 'e.g. 2022')}
           {field('Semester Number', 'semesterNumber', '1 – 8')}
         </div>

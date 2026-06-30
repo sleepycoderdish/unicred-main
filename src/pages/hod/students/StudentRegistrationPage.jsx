@@ -3,25 +3,29 @@
 // HOD registers students into an academic session (Section 7).
 //
 // Two tabs:
-//   "Register" — HOD picks a session, semester, batch, then
-//                selects students from the unregistered list
-//                and submits to POST /studentReg/register-session
+//   "Register"   — HOD picks a session + semester + batch, the page then
+//                  FETCHES the matching students of their department and shows
+//                  them as a checkbox list (with roll number + name) plus a
+//                  "Select all" option. The HOD ticks who to register.
+//                  We send the underlying studentIds to the backend (which is
+//                  exactly what the backend expects) — the HOD never has to
+//                  know or type a database id.
 //
-//   "Registered" — view all students already in a session,
-//                  their status (active / completed / detained)
-//                  and their rollNo / name.
+//   "Registered" — view all students already in a session, with their status
+//                  (active / completed / detained), rollNo and name.
 // ─────────────────────────────────────────────────────────────
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { PageHeader }            from '@/components/ui/PageHeader'
 import { Button }                from '@/components/ui/Button'
 import { Select }                from '@/components/ui/Select'
 import { Input }                 from '@/components/ui/Input'
-import { Badge }                 from '@/components/ui/Badge'
 import { CardLoader }            from '@/components/ui/Loader'
 import { useSessions }           from '@/hooks/useSessions'
 import { useStudentsInSession, useRegisterStudents } from '@/hooks/useStudentRegistration'
-import { useFaculties }          from '@/hooks/useFaculties'
+import { useStudents }           from '@/hooks/useStudents'
+import { useMyDepartmentId }     from '@/hooks/useFaculties'
+import { sessionLabel }          from '@/utils/formatters'
 
 // Status badge colours for registration status
 const REG_STATUS_COLOR = {
@@ -46,25 +50,67 @@ function RegisterTab() {
   const [sessionId,      setSessionId]      = useState('')
   const [semesterNumber, setSemesterNumber] = useState('')
   const [batchYear,      setBatchYear]      = useState('')
-  // Comma-separated student IDs entered by HOD
-  const [studentIdsRaw,  setStudentIdsRaw]  = useState('')
+  // Set of selected student DB ids (the value the backend wants).
+  // Using a Set makes toggling and "select all" simple and fast.
+  const [selectedIds,    setSelectedIds]    = useState(() => new Set())
   const [errors,         setErrors]         = useState({})
 
   const { data: sessions = [] } = useSessions()
   const { mutate: register, isPending } = useRegisterStudents()
 
-  // Only upcoming / active sessions can receive registrations
+  // The HOD's own department, used to scope the student list.
+  const myDeptId = useMyDepartmentId()
+
+  // Fetch the candidate students once batch + semester are filled in.
+  // The hook stays disabled until both are present.
+  const {
+    data: students = [],
+    isLoading: studentsLoading,
+    isError:   studentsError,
+  } = useStudents({
+    departmentId:   myDeptId ?? undefined,
+    batchYear:      batchYear ? Number(batchYear) : undefined,
+    semesterNumber: semesterNumber ? Number(semesterNumber) : undefined,
+  })
+
+  // Only upcoming / active sessions can receive registrations.
+  // Labels show the session NAME + academic year (never the numeric id).
   const sessionOpts = sessions
     .filter(s => ['upcoming', 'active'].includes(s.status))
-    .map(s => ({ value: String(s.id), label: s.name }))
+    .map(s => ({ value: String(s.id), label: sessionLabel(s) }))
+
+  // Are all currently listed students selected? (drives the "select all" box)
+  const allSelected = students.length > 0 && students.every(st => selectedIds.has(st.id))
+
+  // Toggle a single student in/out of the selection set.
+  function toggleOne(studentId) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(studentId)) next.delete(studentId)
+      else next.add(studentId)
+      return next
+    })
+  }
+
+  // Select-all / clear-all toggle for the whole visible list.
+  function toggleAll() {
+    setSelectedIds(prev => {
+      if (students.every(st => prev.has(st.id))) {
+        // Everything is selected → clear all.
+        return new Set()
+      }
+      // Otherwise select every listed student.
+      return new Set(students.map(st => st.id))
+    })
+  }
 
   function validate() {
     const errs = {}
-    if (!sessionId)                            errs.sessionId = 'Required'
+    if (!sessionId)                              errs.sessionId = 'Required'
     if (!semesterNumber || Number(semesterNumber) < 1 || Number(semesterNumber) > 8)
-                                               errs.semesterNumber = '1–8 required'
-    if (!batchYear || isNaN(Number(batchYear))) errs.batchYear = 'Required e.g. 2022'
-    if (!studentIdsRaw.trim())                 errs.studentIds = 'Enter at least one student ID'
+                                                 errs.semesterNumber = '1–8 required'
+    if (!batchYear || isNaN(Number(batchYear)))  errs.batchYear = 'Required e.g. 2022'
+    if (selectedIds.size === 0)                  errs.students = 'Select at least one student'
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -73,37 +119,26 @@ function RegisterTab() {
     e.preventDefault()
     if (!validate()) return
 
-    // Parse the comma-separated IDs into an integer array
-    // Removes whitespace and filters out empty entries
-    const studentIds = studentIdsRaw
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean)
-      .map(Number)
-      .filter(n => !isNaN(n))
-
-    if (!studentIds.length) {
-      setErrors(p => ({ ...p, studentIds: 'No valid IDs found. Use comma-separated numbers.' }))
-      return
-    }
-
-    // POST /api/studentReg/register-session
+    // POST /api/studentReg/register-session — backend receives the studentIds.
     register(
       {
         sessionId:      Number(sessionId),
         semesterNumber: Number(semesterNumber),
         batchYear:      Number(batchYear),
-        studentIds,
+        studentIds:     Array.from(selectedIds),
       },
       {
         onSuccess: () => {
-          // Reset form on success
-          setStudentIdsRaw('')
+          // Clear the selection after a successful registration.
+          setSelectedIds(new Set())
           setErrors({})
         },
       }
     )
   }
+
+  // Should we show the student list area? Only once batch + semester are set.
+  const readyToList = !!batchYear && !!semesterNumber
 
   return (
     <form onSubmit={handleSubmit} noValidate>
@@ -115,15 +150,15 @@ function RegisterTab() {
         display:      'flex',
         flexDirection:'column',
         gap:           18,
-        maxWidth:      560,
+        maxWidth:      640,
       }}>
-        {/* Session */}
+        {/* Session (by name + year) */}
         <Select
           label="Academic Session"
           value={sessionId}
           onChange={e => { setSessionId(e.target.value); setErrors(p => ({ ...p, sessionId: '' })) }}
           options={sessionOpts}
-          placeholder="Select session"
+          placeholder={sessionOpts.length ? 'Select session' : 'No upcoming/active sessions'}
           error={errors.sessionId}
           required
         />
@@ -133,7 +168,7 @@ function RegisterTab() {
           <Input
             label="Semester Number"
             value={semesterNumber}
-            onChange={e => { setSemesterNumber(e.target.value); setErrors(p => ({ ...p, semesterNumber: '' })) }}
+            onChange={e => { setSemesterNumber(e.target.value); setSelectedIds(new Set()); setErrors(p => ({ ...p, semesterNumber: '' })) }}
             placeholder="1 – 8"
             error={errors.semesterNumber}
             required
@@ -141,48 +176,95 @@ function RegisterTab() {
           <Input
             label="Batch Year"
             value={batchYear}
-            onChange={e => { setBatchYear(e.target.value); setErrors(p => ({ ...p, batchYear: '' })) }}
+            onChange={e => { setBatchYear(e.target.value); setSelectedIds(new Set()); setErrors(p => ({ ...p, batchYear: '' })) }}
             placeholder="e.g. 2022"
             error={errors.batchYear}
             required
           />
         </div>
 
-        {/* Student IDs */}
+        {/* ── Student picker ──────────────────────────────── */}
         <div>
-          <label style={{
-            fontSize: '0.8rem', fontWeight: 500,
-            color: 'var(--text-secondary)', display: 'block', marginBottom: 6,
-          }}>
-            Student IDs <span style={{ color: 'var(--danger)' }}>*</span>
+          <label style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>
+            Students <span style={{ color: 'var(--danger)' }}>*</span>
           </label>
-          <textarea
-            value={studentIdsRaw}
-            onChange={e => { setStudentIdsRaw(e.target.value); setErrors(p => ({ ...p, studentIds: '' })) }}
-            placeholder="Enter student IDs separated by commas&#10;e.g. 90001, 90002, 90003"
-            rows={4}
-            style={{
-              width:        '100%',
-              background:   'var(--bg-input)',
-              border:       `1px solid ${errors.studentIds ? 'var(--danger)' : 'var(--border-default)'}`,
-              borderRadius: 'var(--radius-sm)',
-              color:        'var(--text-primary)',
-              fontSize:     '0.875rem',
-              padding:      '10px 12px',
-              outline:      'none',
-              resize:       'vertical',
-              fontFamily:   'var(--font-mono)',
-              lineHeight:   1.6,
-            }}
-            onFocus={e => { if (!errors.studentIds) e.target.style.borderColor = 'var(--accent)' }}
-            onBlur={e  => { if (!errors.studentIds) e.target.style.borderColor = 'var(--border-default)' }}
-          />
-          {errors.studentIds && (
-            <p style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4 }}>
-              {errors.studentIds}
-            </p>
+
+          {!readyToList ? (
+            // Prompt before batch + semester are chosen.
+            <div style={{ padding: '20px', textAlign: 'center', border: '1px dashed var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                Enter a semester and batch year to load students from your department.
+              </p>
+            </div>
+          ) : studentsLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[1, 2, 3].map(i => <CardLoader key={i} lines={1} />)}
+            </div>
+          ) : studentsError ? (
+            <div style={{ padding: '16px', border: '1px solid var(--danger)', borderRadius: 'var(--radius-sm)' }}>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--danger)' }}>
+                Could not load students. Please check the student-list endpoint.
+              </p>
+            </div>
+          ) : students.length === 0 ? (
+            <div style={{ padding: '20px', textAlign: 'center', border: '1px dashed var(--border-default)', borderRadius: 'var(--radius-sm)' }}>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                No students found for this batch and semester.
+              </p>
+            </div>
+          ) : (
+            <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+              {/* Select-all header row */}
+              <label style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-subtle)',
+                cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)',
+              }}>
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+                Select all ({selectedIds.size}/{students.length} selected)
+              </label>
+
+              {/* One row per student */}
+              <div style={{ maxHeight: 280, overflowY: 'auto' }}>
+                {students.map((st, idx) => (
+                  <label
+                    key={st.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+                      borderBottom: idx < students.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-elevated)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(st.id)}
+                      onChange={() => toggleOne(st.id)}
+                    />
+                    {/* Roll number — what humans recognise students by */}
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-accent)', fontWeight: 700, minWidth: 90 }}>
+                      {st.rollNo ?? '—'}
+                    </span>
+                    {/* Name + email */}
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                        {st.user?.name ?? '—'}
+                      </span>
+                      <span style={{ display: 'block', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                        {st.user?.email ?? ''}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
           )}
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+
+          {errors.students && (
+            <p style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 6 }}>{errors.students}</p>
+          )}
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 6 }}>
             Subjects are auto-assigned from course offerings for the selected semester and batch.
           </p>
         </div>
@@ -192,9 +274,10 @@ function RegisterTab() {
           variant="primary"
           loading={isPending}
           loadingText="Registering..."
+          disabled={selectedIds.size === 0}
           style={{ alignSelf: 'flex-start' }}
         >
-          Register students
+          Register {selectedIds.size > 0 ? `${selectedIds.size} ` : ''}student{selectedIds.size === 1 ? '' : 's'}
         </Button>
       </div>
     </form>
@@ -210,7 +293,7 @@ function RegisteredTab() {
 
   const sessionOpts = [
     { value: '', label: 'All sessions' },
-    ...sessions.map(s => ({ value: String(s.id), label: s.name })),
+    ...sessions.map(s => ({ value: String(s.id), label: sessionLabel(s) })),
   ]
 
   // Count by status
@@ -221,7 +304,7 @@ function RegisteredTab() {
   return (
     <div>
       {/* Session filter */}
-      <div style={{ marginBottom: 20, maxWidth: 300 }}>
+      <div style={{ marginBottom: 20, maxWidth: 320 }}>
         <Select
           label="Filter by session"
           value={sessionId}

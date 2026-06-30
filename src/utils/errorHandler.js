@@ -16,7 +16,7 @@
  *  3. Network / unknown error
  *
  * @param {unknown} err - The raw error from a try/catch block
- * @returns {{ message: string, status: number|null, fieldErrors: Object }}
+ * @returns {{ message: string, status: number|null, code: string|null, fieldErrors: Object, data: any }}
  */
 export function parseApiError(err) {
   // Axios error with a response from the server
@@ -32,7 +32,11 @@ export function parseApiError(err) {
       data?.error ||
       getStatusMessage(status)
 
-    return { message, status, fieldErrors }
+    // A machine-readable code if the backend sends one (e.g. "EMAIL_NOT_VERIFIED").
+    // Having this lets callers branch on the code instead of fragile message text.
+    const code = data?.code ?? null
+
+    return { message, status, code, fieldErrors, data }
   }
 
   // Axios error with no response (network down, CORS, timeout)
@@ -40,7 +44,9 @@ export function parseApiError(err) {
     return {
       message: 'Unable to reach the server. Check your internet connection.',
       status: null,
+      code: null,
       fieldErrors: {},
+      data: null,
     }
   }
 
@@ -48,7 +54,9 @@ export function parseApiError(err) {
   return {
     message: err?.message || 'An unexpected error occurred. Please try again.',
     status: null,
+    code: null,
     fieldErrors: {},
+    data: null,
   }
 }
 

@@ -20,12 +20,15 @@
 // ─────────────────────────────────────────────────────────────
 
 import { create } from 'zustand'
-import { devtools } from 'zustand/middleware'
+// `persist` saves chosen slices of state to localStorage so they survive a
+// full page reload. `devtools` is just for the Redux DevTools browser panel.
+import { devtools, persist } from 'zustand/middleware'
 import { decodeJwt } from '@/utils/jwt'
 import { getDashboardPath } from '@/config/roleConfig'
 
 const useAuthStore = create(
   devtools(
+    persist(
     (set, get) => ({
       // ── State ──────────────────────────────────────────────
       accessToken:     null,   // Raw JWT string (in-memory only)
@@ -37,19 +40,24 @@ const useAuthStore = create(
       // ── Actions ────────────────────────────────────────────
 
       /**
-       * setTokens — called after successful login or token refresh.
-       * Decodes the JWT to extract user info (role, userId, schoolId).
-       *
-       * @param {string} accessToken - Raw JWT from backend response body
-       */
-      /**
        * setTokens — called after login or token refresh.
-       * @param {string} accessToken
-       * @param {string} [refreshToken] - stored in memory so refresh calls can send it in the body
+       *
+       * The JWT only carries { userId, role, schoolId, exp } — it does NOT
+       * contain the user's name. The login endpoint returns a separate `user`
+       * object that DOES have the name. So we accept that object here and merge
+       * the name in, otherwise the dashboard greeting falls back to the role.
+       *
+       * @param {string} accessToken      - Raw JWT from backend response body
+       * @param {string} [refreshToken]   - stored so refresh calls can send it in the body
+       * @param {object} [userInfo]       - login `user` object: { id, name, role, schoolId }
        */
-      setTokens: (accessToken, refreshToken) => {
+      setTokens: (accessToken, refreshToken, userInfo = null) => {
         const decoded = decodeJwt(accessToken)
         // decoded shape: { userId, role, schoolId, iat, exp }
+
+        // Keep any name we already had (e.g. on a silent refresh where the
+        // backend does NOT resend the user object) instead of wiping it.
+        const previousName = get().user?.name ?? null
 
         set({
           accessToken,
@@ -59,6 +67,8 @@ const useAuthStore = create(
             role:     decoded.role,
             schoolId: decoded.schoolId,
             exp:      decoded.exp, // expiry timestamp (seconds)
+            // Prefer the fresh name from login; otherwise keep the old one.
+            name:     userInfo?.name ?? previousName,
           },
           isAuthenticated: true,
         }, false, 'setTokens')
@@ -111,6 +121,19 @@ const useAuthStore = create(
         return Date.now() / 1000 > exp - 30 // refresh 30s before expiry
       },
     }),
+    {
+      // ── persist config ───────────────────────────────────────
+      name: 'unicred-auth', // localStorage key
+      // SECURITY: we deliberately do NOT persist the accessToken (short-lived,
+      // XSS-sensitive). We persist only the long-lived refreshToken and the
+      // user info (name/role/schoolId). On reload, ProtectedRoute uses the
+      // saved refreshToken to silently fetch a brand-new accessToken.
+      partialize: (state) => ({
+        refreshToken: state.refreshToken,
+        user:         state.user,
+      }),
+    }
+    ),
     { name: 'AuthStore' } // DevTools label
   )
 )

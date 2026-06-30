@@ -12,6 +12,7 @@ import { Badge }         from '@/components/ui/Badge'
 import { CardLoader }    from '@/components/ui/Loader'
 import { useSubjects, useCreateSubject, useDeactivateSubject, useOfferings, useCreateOffering, useDeleteOffering } from '@/hooks/useSubjects'
 import { useSessions }   from '@/hooks/useSessions'
+import { sessionLabel }  from '@/utils/formatters'
 
 const TYPE_OPTS   = [{ value: 'theory', label: 'Theory' }, { value: 'lab', label: 'Lab' }, { value: 'tutorial', label: 'Tutorial' }]
 const TYPE_COLOR  = { theory: '#6366f1', lab: '#34d399', tutorial: '#fbbf24' }
@@ -120,7 +121,12 @@ export default function SubjectsPage() {
   const { mutate: deactivate, isPending: deactivating }                   = useDeactivateSubject()
   const { mutate: deleteOffer, isPending: deletingOffer }                 = useDeleteOffering()
 
-  const sessionOpts = sessions.map(s => ({ value: String(s.id), label: s.name }))
+  // Offerings are tied to a session. Show the session by NAME + academic year
+  // (HODs don't know numeric ids) and hide archived sessions since they are
+  // read-only and can't receive new offerings.
+  const sessionOpts = sessions
+    .filter(s => s.status !== 'archived')
+    .map(s => ({ value: String(s.id), label: sessionLabel(s) }))
 
   return (
     <div>
