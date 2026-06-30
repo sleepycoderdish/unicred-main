@@ -131,6 +131,21 @@ export async function editSubmissions(subjectId, payload) {
 }
 
 /**
+ * GET /api/results/roster?publicationId=X&subjectId=Y
+ * Full student roster for a subject's mark-entry screen.
+ * Returns ALL registered students with their existing mark attached (null
+ * if not yet submitted) — independent of whether any marks have been uploaded.
+ * RESPONSE: { data: [{ student: { id, rollNo, user: { name, email } },
+ *                      marks, grade, gradePoint }] }
+ */
+export async function fetchRoster(subjectId, publicationId) {
+  const res = await apiClient.get('/api/results/roster', {
+    params: { subjectId, publicationId },
+  })
+  return res.data
+}
+
+/**
  * POST /api/results/submit-reappear
  * Upload reappear marks. ONLY allowed on a PUBLISHED publication.
  * Recomputes CGPA and notifies the student.

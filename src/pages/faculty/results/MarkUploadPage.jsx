@@ -9,26 +9,31 @@ import { PageHeader }   from '@/components/ui/PageHeader'
 import { Button }       from '@/components/ui/Button'
 import { Badge }        from '@/components/ui/Badge'
 import { CardLoader }   from '@/components/ui/Loader'
-import { useMySubjects, useSubmissions, useSubmitMarks, useEditSubmissions } from '@/hooks/useResultPublications'
+import { useMySubjects, useRoster, useSubmitMarks, useEditSubmissions } from '@/hooks/useResultPublications'
 
 // ── Mark entry table for one subject ─────────────────────────
 function MarkEntry({ assignment, onBack }) {
   const { publication, subject } = assignment
 
-  // Fetch already-submitted marks (if any) to pre-fill
-  const { data: existing = [] } = useSubmissions(subject.id, publication.id)
+  // useRoster returns ALL registered students, with marks: null if not yet
+  // submitted. This replaces useSubmissions which only returned rows that
+  // already had marks — causing "No students" when no marks had been entered yet.
+  const { data: roster = [], isLoading: rosterLoading } = useRoster(subject.id, publication.id)
   const { mutate: submit, isPending: submitting } = useSubmitMarks()
   const { mutate: edit,   isPending: editing }    = useEditSubmissions()
 
   // Local marks state: { [studentId]: markValue }
   const [marks, setMarks] = useState(() => {
     const init = {}
-    existing.forEach(r => { init[r.student?.id] = String(r.marks ?? '') })
+    roster.forEach(r => { init[r.student?.id] = String(r.marks ?? '') })
     return init
   })
   const [errors, setErrors] = useState({})
 
-  const isEditing = assignment.isSubmitted
+  // Derive edit mode from the roster: if any student already has a mark we're
+  // editing, not submitting for the first time. More reliable than
+  // assignment.isSubmitted which can lag behind the actual data.
+  const isEditing = roster.some(r => r.marks != null)
   const isLocked  = ['frozen','published'].includes(publication.status)
 
   function validate() {
@@ -74,7 +79,9 @@ function MarkEntry({ assignment, onBack }) {
         <Badge type="status" value={publication.status} />
       </div>
 
-      {existing.length === 0 ? (
+      {rosterLoading ? (
+        <CardLoader lines={3} />
+      ) : roster.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', padding: '32px 0', textAlign: 'center' }}>
           No students registered for this subject yet.
         </p>
@@ -91,12 +98,12 @@ function MarkEntry({ assignment, onBack }) {
               ))}
             </div>
 
-            {existing.map((row, idx) => {
+            {roster.map((row, idx) => {
               const sid = row.student?.id
               return (
                 <div key={sid} style={{ display: 'grid', gridTemplateColumns: '1fr 160px 80px',
                   gap: 16, padding: '12px 20px', alignItems: 'center',
-                  borderBottom: idx < existing.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}>
+                  borderBottom: idx < roster.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}>
                   <p style={{ margin: 0, fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>
                     {row.student?.user?.name}
                   </p>

@@ -12,6 +12,7 @@ const KEYS = {
   failures: (id) => ['result-publications', id, 'failures'],
   mySubjects: () => ['result-my-subjects'],
   submissions: (subjectId, publicationId) => ['submissions', subjectId, publicationId],
+  roster:      (subjectId, publicationId) => ['roster', subjectId, publicationId],
 }
 
 export function usePublications() {
@@ -116,6 +117,17 @@ export function useSubmissions(subjectId, publicationId) {
     queryKey: KEYS.submissions(subjectId, publicationId),
     queryFn: async () => {
       const res = await api.fetchSubmissions(subjectId, publicationId)
+      return res.data ?? []
+    },
+    enabled: !!subjectId && !!publicationId,
+  })
+}
+
+export function useRoster(subjectId, publicationId) {
+  return useQuery({
+    queryKey: KEYS.roster(subjectId, publicationId),
+    queryFn: async () => {
+      const res = await api.fetchRoster(subjectId, publicationId)
       return res.data ?? []
     },
     enabled: !!subjectId && !!publicationId,
