@@ -22,6 +22,13 @@
 // RoleGuard:
 //   Nested inside ProtectedRoute. Ensures the user's role matches
 //   the route they're trying to access.
+//
+// Phase 3 additions (Achievements + Internships):
+//   - Student: view/create/manage own achievements + internships
+//   - Faculty: review queue for achievements assigned to them
+//   - HOD: read-only department-wide dashboards
+//   These follow the exact same lazy + guardedPage pattern as every
+//   other route below, so nothing new to learn here.
 // ─────────────────────────────────────────────────────────────
 
 // src/router.jsx — Updated with AppShell + admin sub-routes
@@ -109,6 +116,17 @@ const MyProfilePage        = lazy(() => import('@/pages/student/profile/StudentP
 const StudentSubjectsPage  = lazy(() => import('@/pages/student/subjects/SubjectsPage'))
 const SubjectDetailPage    = lazy(() => import('@/pages/student/subjects/SubjectDetailPage'))
 
+// Lazy — Phase 3: Achievements (student + faculty + hod)
+const AchievementsPage       = lazy(() => import('@/pages/student/achievements/AchievementsPage'))
+const AchievementDetail      = lazy(() => import('@/pages/student/achievements/AchievementDetail'))
+const ReviewQueuePage        = lazy(() => import('@/pages/faculty/achievements/ReviewQueuePage'))
+const ReviewDetailPage       = lazy(() => import('@/pages/faculty/achievements/ReviewDetailPage'))
+const AchievementsDashboard  = lazy(() => import('@/pages/hod/achievements/AchievementsDashboard'))
+
+// Lazy — Phase 3: Internships (student + hod)
+const InternshipsPage      = lazy(() => import('@/pages/student/internships/InternshipsPage'))
+const InternshipsDashboard = lazy(() => import('@/pages/hod/internships/InternshipsDashboard'))
+
 const Fallback = () => <PageLoader message="Loading..." />
 
 /**
@@ -165,6 +183,10 @@ const router = createBrowserRouter([
   { path: '/hod/students',         element: guardedPage(<StudentRegistrationPage />, [ROLES.HOD]) },
   { path: '/hod/invite',           element: guardedPage(<HodInvitePage />,           [ROLES.HOD]) },
 
+  // HOD sub-routes — Phase 3 (read-only dashboards)
+  { path: '/hod/achievements',     element: guardedPage(<AchievementsDashboard />, [ROLES.HOD]) },
+  { path: '/hod/internships',      element: guardedPage(<InternshipsDashboard />,  [ROLES.HOD]) },
+
   // Invited member completes their own profile (faculty or hod)
   { path: '/faculty/profile',      element: guardedPage(<FacultyProfilePage />, [ROLES.FACULTY, ROLES.HOD]) },
 
@@ -173,6 +195,11 @@ const router = createBrowserRouter([
   { path: '/faculty/marks',        element: guardedPage(<MarkUploadPage />,     [ROLES.FACULTY, ROLES.HOD]) },
   { path: '/faculty/assessments',  element: guardedPage(<AssessmentsPage />,    [ROLES.FACULTY, ROLES.HOD]) },
   { path: '/faculty/reappear',     element: guardedPage(<ReappearMarksPage />,  [ROLES.FACULTY, ROLES.HOD]) },
+
+  // Faculty sub-routes — Phase 3 (achievement review queue)
+  // HOD is included because an HOD also has a Faculty record and can review too.
+  { path: '/faculty/achievements',            element: guardedPage(<ReviewQueuePage />,  [ROLES.FACULTY, ROLES.HOD]) },
+  { path: '/faculty/achievements/:id/review', element: guardedPage(<ReviewDetailPage />, [ROLES.FACULTY, ROLES.HOD]) },
 
   // Student sub-routes
   { path: '/student/results',              element: guardedPage(<ResultsPage />,          [ROLES.STUDENT]) },
@@ -183,9 +210,15 @@ const router = createBrowserRouter([
   { path: '/student/subjects',             element: guardedPage(<StudentSubjectsPage />,   [ROLES.STUDENT]) },
   { path: '/student/subjects/:subjectId',  element: guardedPage(<SubjectDetailPage />,     [ROLES.STUDENT]) },
 
+  // Student sub-routes — Phase 3 (achievements + internships)
+  { path: '/student/achievements',     element: guardedPage(<AchievementsPage />,  [ROLES.STUDENT]) },
+  { path: '/student/achievements/:id', element: guardedPage(<AchievementDetail />, [ROLES.STUDENT]) },
+  { path: '/student/internships',      element: guardedPage(<InternshipsPage />,   [ROLES.STUDENT]) },
+
   // 404
   { path: '*', element: <NotFound /> },
 ])
+
 
 export function AppRouter() { return <RouterProvider router={router} /> }
 export default AppRouter

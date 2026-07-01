@@ -40,6 +40,11 @@ export async function fetchFaculties(departmentId = null) {
   return res.data
 }
 
+// Alias — the achievements pages (AchievementsPage, AchievementDetail) import
+// this under the name `getFaculties`. Same function, same envelope return
+// ({ success, message, data }); kept as an alias so both names resolve.
+export const getFaculties = fetchFaculties
+
 // ── Fetch faculty by userId ───────────────────────────────────
 /**
  * fetchFacultyById — fetches a single faculty member by their userId.

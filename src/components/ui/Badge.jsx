@@ -25,6 +25,10 @@ const STATUS_STYLES = {
   unverified:{ label: 'Unverified',bg: 'rgba(251,191,36,0.12)',  color: '#fbbf24', border: 'rgba(251,191,36,0.25)' },
   assigned:  { label: 'Assigned',  bg: 'rgba(99,102,241,0.12)',  color: '#818cf8', border: 'rgba(99,102,241,0.25)' },
   unassigned:{ label: 'Unassigned',bg: 'rgba(71,85,105,0.2)',    color: '#94a3b8', border: 'rgba(71,85,105,0.3)' },
+  // Achievement / review verdict statuses
+  pending:   { label: 'Pending',   bg: 'rgba(251,191,36,0.12)',  color: '#fbbf24', border: 'rgba(251,191,36,0.25)' },
+  approved:  { label: 'Approved',  bg: 'rgba(52,211,153,0.12)',  color: '#34d399', border: 'rgba(52,211,153,0.25)' },
+  rejected:  { label: 'Rejected',  bg: 'rgba(248,113,113,0.12)', color: '#f87171', border: 'rgba(248,113,113,0.25)' },
 }
 
 // ── Preset colour shortcuts ───────────────────────────────────
