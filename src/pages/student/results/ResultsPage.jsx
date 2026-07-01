@@ -30,16 +30,40 @@ function GradePill({ grade, isPassed }) {
 }
 
 // Apply reappear modal
+//
+// FIELD SHAPES (confirmed from the real GET /api/students/results response,
+// a single row looks like this):
+//   {
+//     id, studentId, marks, grade, gradePoint, isPassed,
+//     subjectId,              <-- flat field, this IS the subject's id
+//     publicationId,
+//     subject:     { name, courseCode, credits, ... },   <-- display only, NO id inside
+//     publication: { sessionId, semesterNumber, publishedAt },  <-- sessionId is NESTED here
+//     semester:    { semesterNumber, name },
+//   }
+// So: subjectId is a FLAT field on the row, but sessionId is only found
+// NESTED inside `publication`. Mixing these up (e.g. reading
+// `result.subject.id`, which doesn't exist, or `result.sessionId`, which
+// also doesn't exist) silently produces `undefined`, so the backend never
+// receives that field even though the button appears to work fine.
 function ReappearModal({ result, isOpen, onClose }) {
   const [reason, setReason] = useState('')
   const { mutate: apply, isPending } = useApplyReappear()
 
   function handleSubmit(e) {
     e.preventDefault()
+    // .trim() is a built-in string method that removes leading/trailing
+    // whitespace. We use it so a reason of only spaces (or nothing) is
+    // treated as empty and blocks submission.
     if (!reason.trim()) return
+    // Guard against submitting with a missing id — if `result` itself, or
+    // its subjectId/sessionId, somehow isn't set yet (e.g. modal opened
+    // before its data loaded), stop here instead of sending a request the
+    // backend will reject anyway.
+    if (!result?.subjectId || !result?.publication?.sessionId) return
     apply({
-      subjectId: result?.subject?.id,
-      sessionId: result?.publication?.sessionId,
+      subjectId: result.subjectId,
+      sessionId: result.publication.sessionId,
       reason:    reason.trim(),
     }, { onSuccess: () => { setReason(''); onClose() } })
   }
@@ -81,9 +105,19 @@ export default function ResultsPage() {
   const { data: results  = [], isLoading }  = useStudentResults()
   const { data: myApps   = [] }             = useMyReappearApplications()
 
-  // Check if student already has a pending/approved application for a subject
+  // Check if student already has a pending/approved application for a subject.
+  // Same fix as ReappearModal above: applications also expose the subject's
+  // id as a flat `subjectId` field, not nested under `subject.id` (the
+  // nested `subject` object is display-only — just its name). Using the
+  // wrong path meant this comparison was always `undefined === undefined`,
+  // which is `true` for every row — so after applying to ONE subject, every
+  // other failed subject would have wrongly shown "Applied" too.
+  //
+  // .some() is a built-in Array method: it checks each item in `myApps` and
+  // returns true as soon as ANY of them satisfies the condition inside the
+  // arrow function (false if none do, or if the array is empty).
   function hasApplication(subjectId) {
-    return myApps.some(a => a.subject?.id === subjectId && a.status !== 'rejected')
+    return myApps.some(a => a.subjectId === subjectId && a.status !== 'rejected')
   }
 
   // Group results by semester
@@ -151,7 +185,7 @@ export default function ResultsPage() {
                     {/* Reappear button — only for failed subjects */}
                     <div>
                       {!r.isPassed && (
-                        hasApplication(r.subject?.id)
+                        hasApplication(r.subjectId)
                           ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Applied</span>
                           : <Button variant="ghost" size="sm"
                               onClick={() => setReappearTarget(r)}>

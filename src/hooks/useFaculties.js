@@ -12,10 +12,14 @@ import { parseApiError } from '@/utils/errorHandler'
 
 // ── Query key factory ─────────────────────────────────────────
 export const FACULTY_KEYS = {
-  // Include departmentId in the key so filtered and unfiltered results
-  // cache separately (avoid showing stale filtered data after clearing filter)
-  list:  (departmentId) => ['faculties', { departmentId: departmentId ?? null }],
-  byId:  (userId)       => ['faculty', userId],
+  // A null departmentId must never share a cache key with a real one — a
+  // caller whose department is still resolving would otherwise be served
+  // the cached unfiltered whole-school list.
+  list: (departmentId) =>
+    departmentId == null
+      ? ['faculties', 'all']
+      : ['faculties', 'department', Number(departmentId)],
+  byId: (userId) => ['faculty', userId],
 }
 
 // ── useFaculties ──────────────────────────────────────────────
@@ -51,7 +55,8 @@ export function useFaculties(departmentId = null) {
       // faculty whose departmentId matches — so an HOD never sees faculty from
       // another department in the assignment dropdown.
       if (departmentId != null) {
-        list = list.filter(f => Number(f.departmentId) === Number(departmentId))
+        const wantedDeptId = Number(departmentId)
+        list = list.filter(f => Number(f.departmentId) === wantedDeptId)
       }
       return list
     },

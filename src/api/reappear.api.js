@@ -78,7 +78,12 @@ export async function rejectApplication(id, comment) {
 /**
  * GET /api/reappear/active-students
  * Approved reappear students for the faculty's assigned subjects.
- * RESPONSE: { data: [{ status, student: { user: { name } }, subject: { name } }] }
+ * RESPONSE: { data: [{ id, studentId, subjectId, publicationId, status,
+ *                      student: { id, rollNo, departmentId, batchYear, user: { name, email } },
+ *                      subject: { id, courseCode, name, totalMarks, passingMarks } }] }
+ * publicationId is resolved server-side from the matching PUBLISHED
+ * ResultPublication (by session/department/batch/semester) — it is null if
+ * no published publication exists yet.
  * Empty array = no approved applications yet for this faculty's subjects.
  */
 export async function fetchActiveReappearStudents() {

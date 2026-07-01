@@ -28,11 +28,14 @@ import {
 } from '@/hooks/useHodAssignments'
 import { useSessions }  from '@/hooks/useSessions'
 import { useSubjects }  from '@/hooks/useSubjects'
-import { useFaculties, useMyDepartmentId } from '@/hooks/useFaculties'
+import { useFaculties, useMyFaculty } from '@/hooks/useFaculties'
 import { sessionLabel } from '@/utils/formatters'
 
 // ── Shared form fields used by both Create and Edit modals ────
-function AssignmentForm({ form, setForm, sessions, subjects, faculties }) {
+// facultyLoading: true while the HOD's own department (or its faculty list)
+// is still resolving — the Faculty select stays disabled instead of ever
+// showing an unfiltered, whole-school list.
+function AssignmentForm({ form, setForm, sessions, subjects, faculties, facultyLoading }) {
   const sessionOpts = sessions
     .filter(s => ['upcoming', 'active'].includes(s.status))
     .map(s => ({ value: String(s.id), label: s.name }))
@@ -66,7 +69,8 @@ function AssignmentForm({ form, setForm, sessions, subjects, faculties }) {
         value={form.facultyId}
         onChange={e => set('facultyId', e.target.value)}
         options={facultyOpts}
-        placeholder="Select faculty member"
+        disabled={facultyLoading}
+        placeholder={facultyLoading ? 'Loading your department…' : 'Select faculty member'}
         required
       />
       <Select
@@ -106,13 +110,14 @@ function CreateAssignmentModal({ isOpen, onClose }) {
 
   const { data: sessions  = [] } = useSessions()
   const { data: subjects  = [] } = useSubjects()
-  // Resolve the HOD's department to filter faculty (Issue 3). We try the HOD's
-  // own faculty record first; if that isn't available, we fall back to the
-  // department of the SELECTED session (sessions belong to the HOD's dept).
-  const myDeptId = useMyDepartmentId()
-  const selectedSession = sessions.find(s => String(s.id) === String(form.sessionId))
-  const deptId = myDeptId ?? selectedSession?.departmentId ?? null
-  const { data: faculties = [] } = useFaculties(deptId)
+  // Resolve the HOD's OWN department only. We deliberately do NOT fall back
+  // to a session's departmentId or to null while this is still loading —
+  // useFaculties(null) returns the WHOLE SCHOOL'S faculty, which used to
+  // leak other departments' faculty into this dropdown.
+  const { data: myFaculty, isLoading: myFacultyLoading } = useMyFaculty()
+  const myDeptId = myFaculty?.departmentId ?? myFaculty?.department?.id ?? null
+  const { data: faculties = [], isLoading: facultiesLoading } = useFaculties(myDeptId)
+  const facultyLoading = myFacultyLoading || myDeptId == null || facultiesLoading
   const { mutate: create, isPending } = useCreateHodAssignment()
 
   function handleSubmit(e) {
@@ -138,6 +143,7 @@ function CreateAssignmentModal({ isOpen, onClose }) {
         <AssignmentForm
           form={form} setForm={setForm}
           sessions={sessions} subjects={subjects} faculties={faculties}
+          facultyLoading={facultyLoading}
         />
         <Modal.Footer>
           <Button variant="ghost" type="button" onClick={onClose} disabled={isPending}>Cancel</Button>
@@ -165,11 +171,11 @@ function EditAssignmentModal({ assignment, isOpen, onClose }) {
 
   const { data: sessions  = [] } = useSessions()
   const { data: subjects  = [] } = useSubjects()
-  // Same department resolution as the create modal (Issue 3).
-  const myDeptId = useMyDepartmentId()
-  const selectedSession = sessions.find(s => String(s.id) === String(form.sessionId))
-  const deptId = myDeptId ?? selectedSession?.departmentId ?? null
-  const { data: faculties = [] } = useFaculties(deptId)
+  // Same resolved-department-only approach as the create modal above.
+  const { data: myFaculty, isLoading: myFacultyLoading } = useMyFaculty()
+  const myDeptId = myFaculty?.departmentId ?? myFaculty?.department?.id ?? null
+  const { data: faculties = [], isLoading: facultiesLoading } = useFaculties(myDeptId)
+  const facultyLoading = myFacultyLoading || myDeptId == null || facultiesLoading
   const { mutate: patch, isPending } = usePatchHodAssignment()
 
   function handleSubmit(e) {
@@ -197,6 +203,7 @@ function EditAssignmentModal({ assignment, isOpen, onClose }) {
         <AssignmentForm
           form={form} setForm={setForm}
           sessions={sessions} subjects={subjects} faculties={faculties}
+          facultyLoading={facultyLoading}
         />
         <Modal.Footer>
           <Button variant="ghost" type="button" onClick={onClose} disabled={isPending}>Cancel</Button>

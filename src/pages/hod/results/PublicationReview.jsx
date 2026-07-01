@@ -27,7 +27,8 @@ export default function PublicationReview() {
 
   const { data: pub,      isLoading: pubLoading }  = usePublicationById(Number(id))
   const { data: summary,  isLoading: sumLoading }  = usePublicationSummary(Number(id))
-  const { data: pending,  isLoading: pendLoading } = usePendingSubmissions(Number(id))
+  const pubDeptId = pub?.departmentId ?? pub?.department?.id ?? null
+  const { data: pending,  isLoading: pendLoading } = usePendingSubmissions(Number(id), pubDeptId)
   const { data: failures, isLoading: failLoading } = useFailedStudents(Number(id))
 
   if (pubLoading) return <div style={{ padding: 40 }}><CardLoader lines={4} /></div>

@@ -12,7 +12,7 @@ import { Badge }       from '@/components/ui/Badge'
 import { CardLoader }  from '@/components/ui/Loader'
 import { useSessions } from '@/hooks/useSessions'
 import { useSubjects } from '@/hooks/useSubjects'
-import { useFaculties } from '@/hooks/useFaculties'
+import { useFaculties, useMyDepartmentId } from '@/hooks/useFaculties'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import apiClient from '@/api/client'
 import useUiStore from '@/store/ui.store'
@@ -87,11 +87,15 @@ function CreateTimetableModal({ isOpen, onClose }) {
 function AddSlotModal({ isOpen, onClose, timetableId }) {
   const [form, setForm] = useState({ subjectId:'', facultyId:'', dayOfWeek:'', startTime:'', endTime:'', classroom:'', slotType:'lecture' })
   const { data: subjects  = [] } = useSubjects()
-  const { data: faculties = [] } = useFaculties()
+  // Scope the Faculty dropdown to the HOD's own department — a bare
+  // useFaculties() returns every faculty member in the whole school.
+  const myDeptId = useMyDepartmentId()
+  const { data: faculties = [], isLoading: facultiesLoading } = useFaculties(myDeptId)
   const { mutate: addSlotMut, isPending } = useAddSlot()
   const dayOpts     = DAYS.map((d,i) => ({ value:String(i+1), label:d }))
   const subjectOpts = subjects.map(s => ({ value:String(s.id), label:`${s.courseCode} — ${s.name}` }))
   const facultyOpts = faculties.map(f => ({ value:String(f.userId), label:f.user.name }))
+  const facultyLoading = myDeptId == null || facultiesLoading
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -107,7 +111,9 @@ function AddSlotModal({ isOpen, onClose, timetableId }) {
       <form onSubmit={handleSubmit} noValidate>
         <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
           <Select label="Subject"     value={form.subjectId}  onChange={e=>setForm(p=>({...p,subjectId:e.target.value}))}  options={subjectOpts} placeholder="Select subject"  required />
-          <Select label="Faculty"     value={form.facultyId}  onChange={e=>setForm(p=>({...p,facultyId:e.target.value}))}  options={facultyOpts} placeholder="Select faculty"  required />
+          <Select label="Faculty"     value={form.facultyId}  onChange={e=>setForm(p=>({...p,facultyId:e.target.value}))}  options={facultyOpts}
+            disabled={facultyLoading}
+            placeholder={facultyLoading ? 'Loading your department…' : 'Select faculty'}  required />
           <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12 }}>
             <Select label="Day"       value={form.dayOfWeek}  onChange={e=>setForm(p=>({...p,dayOfWeek:e.target.value}))}  options={dayOpts}     placeholder="Select day"      required />
             <Select label="Type"      value={form.slotType}   onChange={e=>setForm(p=>({...p,slotType:e.target.value}))}   options={SLOT_TYPES}  />
