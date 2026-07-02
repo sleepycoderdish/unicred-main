@@ -15,6 +15,7 @@ const Icons = {
   upload: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>,
   clipboard: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>,
   refresh: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>,
+  timetable: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
   arrow: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
 }
 
@@ -186,6 +187,7 @@ export default function FacultyDashboard() {
             <ActionCard icon={Icons.upload}    title="Upload Marks"      desc="Submit marks for your assigned subjects"       path="/faculty/marks"       color="#fbbf24" />
             <ActionCard icon={Icons.clipboard} title="Internal Marks"    desc="Upload quiz, midterm and lab assessments"      path="/faculty/assessments" color="#38bdf8" />
             <ActionCard icon={Icons.refresh}   title="Reappear Marks"    desc="Submit marks for approved reappear students"   path="/faculty/reappear"    color="#a78bfa" />
+            <ActionCard icon={Icons.timetable} title="Timetable"        desc="View your weekly teaching schedule"             path="/faculty/timetable"   color="#34d399" />
           </div>
 
           {/* Active session notice */}

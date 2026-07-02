@@ -36,6 +36,7 @@ export async function registerStudentsForSession(payload) {
   return res.data
 }
 
+
 /**
  * fetchStudentsInSession — HOD views all students registered in a session.
  *
@@ -79,6 +80,7 @@ export async function fetchStudentsInSession(sessionId) {
  *
  * Returns null data if the student is not registered in any active session.
  */
+
 export async function fetchMySession() {
   const res = await apiClient.get('/api/studentReg/my-session')
   return res.data

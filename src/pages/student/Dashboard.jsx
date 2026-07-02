@@ -24,6 +24,7 @@ const LINKS = [
   { label: 'Results',     desc: 'View your published results',   path: '/student/results' },
   { label: 'CGPA',        desc: 'Your SGPA / CGPA history',       path: '/student/cgpa' },
   { label: 'Reappear',    desc: 'Apply for failed subjects',      path: '/student/reappear' },
+  { label: 'Timetable',   desc: 'Your weekly class schedule',     path: '/student/timetable' },
 ]
 
 export default function StudentDashboard() {

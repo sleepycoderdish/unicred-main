@@ -84,6 +84,7 @@ const Landing          = lazy(() => import('@/pages/landing/Landing'))
 // Lazy — admin sub-pages
 const GradingSystemPage  = lazy(() => import('@/pages/admin/grading/GradingSystemPage'))
 const AdminInvitePage    = lazy(() => import('@/pages/admin/invite/InvitePage'))
+const AdminTimetablePage = lazy(() => import('@/pages/admin/timetable/AdminTimetablePage'))
 
 // Lazy — HOD sub-pages
 const HodInvitePage      = lazy(() => import('@/pages/hod/invite/InvitePage'))
@@ -106,6 +107,7 @@ const MarkUploadPage     = lazy(() => import('@/pages/faculty/results/MarkUpload
 const ReappearMarksPage  = lazy(() => import('@/pages/faculty/reappear/ReappearMarksPage'))
 const AssignmentsPage    = lazy(() => import('@/pages/faculty/assignments/AssignmentsPage'))
 const AssessmentsPage    = lazy(() => import('@/pages/faculty/assessments/AssessmentsPage'))
+const FacultyTimetablePage = lazy(() => import('@/pages/faculty/timetable/FacultyTimetablePage'))
 
 // Lazy — Student sub-pages
 const MySessionPage        = lazy(() => import('@/pages/student/session/MySessionPage'))
@@ -115,6 +117,7 @@ const StudentReappearPage  = lazy(() => import('@/pages/student/reappear/Reappea
 const MyProfilePage        = lazy(() => import('@/pages/student/profile/StudentProfilePage'))
 const StudentSubjectsPage  = lazy(() => import('@/pages/student/subjects/SubjectsPage'))
 const SubjectDetailPage    = lazy(() => import('@/pages/student/subjects/SubjectDetailPage'))
+const StudentTimetablePage = lazy(() => import('@/pages/student/timetable/StudentTimetablePage'))
 
 // Lazy — Phase 3: Achievements (student + faculty + hod)
 const AchievementsPage       = lazy(() => import('@/pages/student/achievements/AchievementsPage'))
@@ -171,6 +174,7 @@ const router = createBrowserRouter([
   // Admin sub-routes
   { path: '/admin/grading',        element: guardedPage(<GradingSystemPage />,  [ROLES.ADMIN]) },
   { path: '/admin/invite',         element: guardedPage(<AdminInvitePage />,    [ROLES.ADMIN]) },
+  { path: '/admin/timetables',     element: guardedPage(<AdminTimetablePage />, [ROLES.ADMIN]) },
 
   // HOD sub-routes
   { path: '/hod/sessions',         element: guardedPage(<SessionsPage />,       [ROLES.HOD]) },
@@ -195,6 +199,7 @@ const router = createBrowserRouter([
   { path: '/faculty/marks',        element: guardedPage(<MarkUploadPage />,     [ROLES.FACULTY, ROLES.HOD]) },
   { path: '/faculty/assessments',  element: guardedPage(<AssessmentsPage />,    [ROLES.FACULTY, ROLES.HOD]) },
   { path: '/faculty/reappear',     element: guardedPage(<ReappearMarksPage />,  [ROLES.FACULTY, ROLES.HOD]) },
+  { path: '/faculty/timetable',    element: guardedPage(<FacultyTimetablePage />, [ROLES.FACULTY, ROLES.HOD]) },
 
   // Faculty sub-routes — Phase 3 (achievement review queue)
   // HOD is included because an HOD also has a Faculty record and can review too.
@@ -209,6 +214,7 @@ const router = createBrowserRouter([
   { path: '/student/myProfile',            element: guardedPage(<MyProfilePage />,         [ROLES.STUDENT]) },
   { path: '/student/subjects',             element: guardedPage(<StudentSubjectsPage />,   [ROLES.STUDENT]) },
   { path: '/student/subjects/:subjectId',  element: guardedPage(<SubjectDetailPage />,     [ROLES.STUDENT]) },
+  { path: '/student/timetable',            element: guardedPage(<StudentTimetablePage />,  [ROLES.STUDENT]) },
 
   // Student sub-routes — Phase 3 (achievements + internships)
   { path: '/student/achievements',     element: guardedPage(<AchievementsPage />,  [ROLES.STUDENT]) },
