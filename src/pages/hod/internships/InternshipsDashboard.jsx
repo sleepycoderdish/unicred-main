@@ -6,53 +6,77 @@
 
 import { useState } from "react";
 import { useDepartmentInternships } from "../../../hooks/useInternships";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { FlatCard } from "@/components/ui/GlassCard";
+import { Pager } from "@/components/ui/Pager";
+import { CardLoader } from "@/components/ui/Loader";
 import Badge from "../../../components/ui/Badge";
+
+const th = { textAlign: "left", padding: "10px 12px", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)" };
+const td = { padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)", borderTop: "1px solid var(--border-subtle)" };
 
 export default function InternshipsDashboard() {
   const [page, setPage] = useState(1);
   const { data, isLoading, error } = useDepartmentInternships({ page, limit: 20 });
 
-  if (isLoading) return <p className="p-4">Loading department internships…</p>;
-  if (error) return <p className="p-4 text-red-600">Couldn't load the dashboard.</p>;
-
   const items = data?.items ?? [];
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-xl font-semibold mb-4">Department Internships</h1>
+    <div>
+      <PageHeader
+        title="Department Internships"
+        subtitle="Every internship logged by students in your department"
+      />
 
-      <table className="w-full text-sm border-collapse">
-        <thead>
-          <tr className="text-left border-b">
-            <th className="py-2">Student</th>
-            <th>Company</th>
-            <th>Role</th>
-            <th>Stipend</th>
-            <th>Linked Achievement</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((i) => (
-            <tr key={i.id} className="border-b">
-              <td className="py-2">{i.student?.user?.name} ({i.student?.rollNo})</td>
-              <td>{i.companyName}</td>
-              <td>{i.role}</td>
-              <td>{i.stipend != null ? `₹${i.stipend}/mo` : "—"}</td>
-              <td>{i.achievement ? <Badge type="status" value={i.achievement.status} /> : "Not linked"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {items.length === 0 && <p className="text-gray-500 mt-4">No internships logged yet.</p>}
-
-      {data?.pagination && (
-        <div className="flex justify-between mt-4 text-sm">
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</button>
-          <span>Page {data.pagination.page} of {data.pagination.totalPages}</span>
-          <button disabled={page >= data.pagination.totalPages} onClick={() => setPage((p) => p + 1)}>Next</button>
-        </div>
+      {isLoading ? (
+        <CardLoader lines={4} />
+      ) : error ? (
+        <p style={{ color: "var(--danger)" }}>Couldn't load the dashboard.</p>
+      ) : items.length === 0 ? (
+        <FlatCard style={{ textAlign: "center", padding: "64px 20px" }}>
+          <p style={{ color: "var(--text-muted)", margin: 0 }}>No internships logged yet.</p>
+        </FlatCard>
+      ) : (
+        <FlatCard padding="4px 8px">
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={th}>Student</th>
+                <th style={th}>Company</th>
+                <th style={th}>Role</th>
+                <th style={th}>Stipend</th>
+                <th style={th}>Linked Achievement</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((i) => (
+                <tr key={i.id}>
+                  <td style={{ ...td, color: "var(--text-primary)" }}>
+                    {i.student?.user?.name} <span style={{ color: "var(--text-muted)" }}>({i.student?.rollNo})</span>
+                  </td>
+                  <td style={td}>{i.companyName}</td>
+                  <td style={td}>{i.role}</td>
+                  <td style={td}>{i.stipend != null ? `₹${i.stipend}/mo` : "—"}</td>
+                  <td style={td}>
+                    {i.achievement ? (
+                      <Badge type="status" value={i.achievement.status} />
+                    ) : (
+                      <span style={{ color: "var(--text-muted)" }}>Not linked</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </FlatCard>
       )}
+
+      <Pager
+        page={page}
+        totalPages={data?.pagination?.totalPages}
+        onPrev={() => setPage((p) => p - 1)}
+        onNext={() => setPage((p) => p + 1)}
+      />
     </div>
   );
 }

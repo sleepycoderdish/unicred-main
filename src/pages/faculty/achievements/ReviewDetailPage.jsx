@@ -3,6 +3,9 @@
 // The screen a faculty member sees when reviewing one achievement:
 // the achievement's details, what OTHER assigned faculty have already
 // decided, and buttons to approve or reject (their own verdict only).
+//
+// Note: the achievement is only marked "approved" once EVERY assigned
+// reviewer approves; a single rejection rejects it outright.
 
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -11,8 +14,14 @@ import {
   useVerifyAchievement,
   useRejectAchievement,
 } from "../../../hooks/useAchievements";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { FlatCard } from "@/components/ui/GlassCard";
+import { Button } from "@/components/ui/Button";
+import { CardLoader } from "@/components/ui/Loader";
 import Badge from "../../../components/ui/Badge";
 import Input from "../../../components/ui/Input";
+
+const fileLink = { color: "var(--text-accent)", textDecoration: "none", fontWeight: 500, fontSize: "0.85rem" };
 
 export default function ReviewDetailPage() {
   const { id } = useParams();
@@ -26,14 +35,17 @@ export default function ReviewDetailPage() {
   const [remark, setRemark] = useState("");
   const [rejectError, setRejectError] = useState("");
 
-  if (isLoading) return <p className="p-4">Loading…</p>;
-  if (error || !data) return <p className="p-4 text-red-600">Couldn't load this review.</p>;
+  if (isLoading) return <div><CardLoader lines={4} /></div>;
+  if (error || !data) return <p style={{ color: "var(--danger)" }}>Couldn't load this review.</p>;
 
   const { achievement, myReview, otherReviews, isFirstResponder, message } = data;
 
-  // Once THIS faculty has already approved or rejected, there's nothing
-  // left to do here — the backend would return 409 on another attempt.
+  // The reviewer can only act while BOTH the achievement overall AND their
+  // own review are still pending. The backend enforces the same guard and
+  // returns 409 otherwise, so mirror it here to avoid showing dead buttons.
+  const achievementSettled = achievement.status !== "pending";
   const alreadyResponded = myReview.status !== "pending";
+  const canReview = !achievementSettled && !alreadyResponded;
 
   function handleApprove() {
     verifyMutation.mutate(remark || undefined, {
@@ -54,90 +66,97 @@ export default function ReviewDetailPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{achievement.title}</h1>
-        <Badge type="status" value={achievement.status} />
-      </div>
+    <div style={{ maxWidth: 720 }}>
+      <PageHeader
+        breadcrumb="Achievement Reviews"
+        title={achievement.title}
+        subtitle={`${achievement.category} · Submitted by ${achievement.student?.user?.name ?? "—"}`}
+        action={<Badge type="status" value={achievement.status} />}
+      />
 
-      <p className="text-sm text-gray-500">
-        {achievement.category} · Submitted by {achievement.student?.user?.name}
-      </p>
-
-      {/* Achievement details the reviewer needs to make a decision:
-          the description plus the supporting files the student attached. */}
-      <div className="border rounded p-4 space-y-2">
-        {achievement.description && <p className="text-sm">{achievement.description}</p>}
-        <div className="flex flex-wrap gap-4 text-sm">
-          {achievement.certificateUrl ? (
-            <a className="text-blue-400 underline" href={achievement.certificateUrl} target="_blank" rel="noreferrer">
-              View certificate
-            </a>
-          ) : (
-            <span className="text-gray-500">No certificate attached</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        {/* Achievement details the reviewer needs to make a decision:
+            the description plus the supporting files the student attached. */}
+        <FlatCard style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {achievement.description && (
+            <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
+              {achievement.description}
+            </p>
           )}
-          {achievement.proofUrl ? (
-            <a className="text-blue-400 underline" href={achievement.proofUrl} target="_blank" rel="noreferrer">
-              View proof
-            </a>
-          ) : (
-            <span className="text-gray-500">No proof attached</span>
-          )}
-        </div>
-      </div>
-
-      {/* isFirstResponder tells us whether anyone else has weighed in yet */}
-      {isFirstResponder ? (
-        <p className="text-sm bg-blue-50 text-blue-700 p-2 rounded">You are the first to review this.</p>
-      ) : (
-        <p className="text-sm bg-gray-50 p-2 rounded">{message}</p>
-      )}
-
-      {otherReviews.length > 0 && (
-        <div>
-          <h2 className="font-medium mb-2">Other Reviewers</h2>
-          <ul className="space-y-2">
-            {otherReviews.map((r) => (
-              <li key={r.facultyId} className="border rounded p-3">
-                <div className="flex justify-between items-center">
-                  <p className="font-medium">{r.facultyName} <span className="text-gray-500 text-sm">({r.designation})</span></p>
-                  <Badge type="status" value={r.status} />
-                </div>
-                {r.remark && <p className="text-sm italic mt-1">"{r.remark}"</p>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {alreadyResponded ? (
-        <p className="text-gray-500">You already {myReview.status} this achievement.</p>
-      ) : (
-        <div className="border rounded p-4 space-y-3">
-          <Input
-            label="Remark (required to reject, optional to approve)"
-            value={remark}
-            onChange={(e) => setRemark(e.target.value)}
-            error={rejectError}
-          />
-          <div className="flex gap-2">
-            <button
-              className="bg-green-600 text-white px-4 py-2 rounded"
-              onClick={handleApprove}
-              disabled={verifyMutation.isPending}
-            >
-              Approve
-            </button>
-            <button
-              className="bg-red-600 text-white px-4 py-2 rounded"
-              onClick={handleReject}
-              disabled={rejectMutation.isPending}
-            >
-              Reject
-            </button>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 18 }}>
+            {achievement.certificateUrl ? (
+              <a style={fileLink} href={achievement.certificateUrl} target="_blank" rel="noreferrer">View certificate</a>
+            ) : (
+              <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>No certificate attached</span>
+            )}
+            {achievement.proofUrl ? (
+              <a style={fileLink} href={achievement.proofUrl} target="_blank" rel="noreferrer">View proof</a>
+            ) : (
+              <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>No proof attached</span>
+            )}
           </div>
-        </div>
-      )}
+        </FlatCard>
+
+        {/* isFirstResponder tells us whether anyone else has weighed in yet */}
+        <p style={{
+          margin: 0, fontSize: "0.8rem", padding: "10px 14px", borderRadius: "var(--radius-sm)",
+          background: isFirstResponder ? "var(--accent-light)" : "var(--bg-elevated)",
+          color: isFirstResponder ? "var(--text-accent)" : "var(--text-secondary)",
+          border: `1px solid ${isFirstResponder ? "var(--accent-border)" : "var(--border-subtle)"}`,
+        }}>
+          {isFirstResponder ? "You are the first to review this." : message}
+        </p>
+
+        {otherReviews.length > 0 && (
+          <div>
+            <h2 style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-primary)", margin: "0 0 10px" }}>
+              Other Reviewers
+            </h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {otherReviews.map((r) => (
+                <FlatCard key={r.facultyId} padding="12px 16px">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                    <p style={{ margin: 0, fontWeight: 500, color: "var(--text-primary)" }}>
+                      {r.facultyName} <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>({r.designation})</span>
+                    </p>
+                    <Badge type="status" value={r.status} />
+                  </div>
+                  {r.remark && (
+                    <p style={{ margin: "6px 0 0", fontSize: "0.82rem", fontStyle: "italic", color: "var(--text-secondary)" }}>
+                      "{r.remark}"
+                    </p>
+                  )}
+                </FlatCard>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!canReview ? (
+          <p style={{ color: "var(--text-muted)" }}>
+            {alreadyResponded
+              ? `You already ${myReview.status} this achievement.`
+              : `This achievement is already ${achievement.status} — no action needed.`}
+          </p>
+        ) : (
+          <FlatCard style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <Input
+              label="Remark (required to reject, optional to approve)"
+              value={remark}
+              onChange={(e) => setRemark(e.target.value)}
+              error={rejectError}
+            />
+            <div style={{ display: "flex", gap: 10 }}>
+              <Button variant="primary" onClick={handleApprove} loading={verifyMutation.isPending} loadingText="Approving...">
+                Approve
+              </Button>
+              <Button variant="danger" onClick={handleReject} loading={rejectMutation.isPending} loadingText="Rejecting...">
+                Reject
+              </Button>
+            </div>
+          </FlatCard>
+        )}
+      </div>
     </div>
   );
 }

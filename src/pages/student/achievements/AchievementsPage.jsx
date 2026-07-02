@@ -3,17 +3,9 @@
 // Student-facing page. Shows the student's own achievements as a list,
 // lets them create a new one (with a faculty reviewer picker), and edit
 // or delete any achievement that is still "pending".
-//
-// Assumed reusable components already in your project (per the file map):
-//   <Modal open={bool} onClose={fn}>...</Modal>
-//   <Input label="" value="" onChange={fn} error="" />
-//   <Select label="" options={[{value,label}]} value multiple onChange />
-//   <Toast /> — assumed to be a global toast system with a `useToast()`
-//               hook or similar; adjust the import to match your app.
-//   <Badge type="status" value="pending|approved|rejected" />
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   useMyAchievements,
   useCreateAchievement,
@@ -21,6 +13,11 @@ import {
 } from "../../../hooks/useAchievements";
 import { getFaculties } from "../../../api/faculties.api"; // already exists in your project
 import { useQuery } from "@tanstack/react-query";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { FlatCard } from "@/components/ui/GlassCard";
+import { Button } from "@/components/ui/Button";
+import { Pager } from "@/components/ui/Pager";
+import { CardLoader } from "@/components/ui/Loader";
 import Modal from "../../../components/ui/Modal";
 import Input from "../../../components/ui/Input";
 import MultiSelect from "../../../components/ui/MultiSelect";
@@ -29,6 +26,7 @@ import Badge from "../../../components/ui/Badge";
 import { isUrl, facultyIdsValid } from "../../../utils/validators";
 
 export default function AchievementsPage() {
+  const navigate = useNavigate();
   // Pagination is basic here — bump `page` when the user clicks Next/Prev.
   const [page, setPage] = useState(1);
   const { data, isLoading, error } = useMyAchievements({ page, limit: 20 });
@@ -46,71 +44,56 @@ export default function AchievementsPage() {
     }
   }
 
-  if (isLoading) return <p className="p-4">Loading your achievements…</p>;
-  if (error) return <p className="p-4 text-red-600">Couldn't load achievements. Try refreshing.</p>;
-
   const achievements = data?.items ?? [];
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold">My Achievements</h1>
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-          onClick={() => setShowCreate(true)}
-        >
-          + New Achievement
-        </button>
-      </div>
+    <div>
+      <PageHeader
+        title="My Achievements"
+        subtitle="Submit achievements and track their verification"
+        action={<Button variant="primary" onClick={() => setShowCreate(true)}>+ New Achievement</Button>}
+      />
 
-      {achievements.length === 0 && (
-        <p className="text-gray-500">No achievements yet. Add your first one above.</p>
-      )}
-
-      <ul className="space-y-3">
-        {achievements.map((a) => (
-          <li key={a.id} className="border rounded p-4 flex items-center justify-between">
-            <div>
-              <Link to={`/student/achievements/${a.id}`} className="font-medium hover:underline">
-                {a.title}
-              </Link>
-              <p className="text-sm text-gray-500">{a.category}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Badge type="status" value={a.status} />
-              {/* Only pending achievements can be deleted — the backend
-                  would 400 otherwise, so we hide the option entirely. */}
-              {a.status === "pending" && (
-                <button
-                  className="text-red-600 text-sm"
-                  onClick={() => handleDelete(a.id)}
-                  disabled={deleteMutation.isPending}
-                >
-                  Delete
-                </button>
-              )}
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      {/* Basic pager driven by the backend's pagination object */}
-      {data?.pagination && (
-        <div className="flex justify-between mt-4 text-sm">
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            Previous
-          </button>
-          <span>
-            Page {data.pagination.page} of {data.pagination.totalPages}
-          </span>
-          <button
-            disabled={page >= data.pagination.totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </button>
+      {isLoading ? (
+        <CardLoader lines={3} />
+      ) : error ? (
+        <p style={{ color: "var(--danger)" }}>Couldn't load achievements. Try refreshing.</p>
+      ) : achievements.length === 0 ? (
+        <FlatCard style={{ textAlign: "center", padding: "64px 20px" }}>
+          <p style={{ color: "var(--text-muted)", margin: 0 }}>No achievements yet. Add your first one above.</p>
+        </FlatCard>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {achievements.map((a) => (
+            <FlatCard key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+              <div
+                onClick={() => navigate(`/student/achievements/${a.id}`)}
+                style={{ cursor: "pointer", flex: 1, minWidth: 0 }}
+              >
+                <p style={{ margin: 0, fontWeight: 600, color: "var(--text-primary)" }}>{a.title}</p>
+                <p style={{ margin: "4px 0 0", fontSize: "0.8rem", color: "var(--text-muted)" }}>{a.category}</p>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <Badge type="status" value={a.status} />
+                {/* Only pending achievements can be deleted — the backend
+                    would 400 otherwise, so we hide the option entirely. */}
+                {a.status === "pending" && (
+                  <Button size="sm" variant="danger" onClick={() => handleDelete(a.id)} disabled={deleteMutation.isPending}>
+                    Delete
+                  </Button>
+                )}
+              </div>
+            </FlatCard>
+          ))}
         </div>
       )}
+
+      <Pager
+        page={page}
+        totalPages={data?.pagination?.totalPages}
+        onPrev={() => setPage((p) => p - 1)}
+        onNext={() => setPage((p) => p + 1)}
+      />
 
       {showCreate && <CreateAchievementModal onClose={() => setShowCreate(false)} />}
     </div>
@@ -186,61 +169,31 @@ function CreateAchievementModal({ onClose }) {
   }
 
   return (
-    <Modal isOpen onClose={onClose}>
-      <form onSubmit={handleSubmit} className="space-y-4 p-4">
-        <h2 className="text-lg font-semibold">New Achievement</h2>
+    <Modal isOpen onClose={onClose} title="New Achievement" maxWidth={520}>
+      <form onSubmit={handleSubmit} noValidate>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {errors.form && <p style={{ margin: 0, color: "var(--danger)", fontSize: "0.82rem" }}>{errors.form}</p>}
 
-        {errors.form && <p className="text-red-600 text-sm">{errors.form}</p>}
-
-        <Input
-          label="Title"
-          value={form.title}
-          onChange={(e) => setField("title", e.target.value)}
-          error={errors.title}
-        />
-        <Input
-          label="Category"
-          value={form.category}
-          onChange={(e) => setField("category", e.target.value)}
-          error={errors.category}
-        />
-        <Input
-          label="Description (optional)"
-          value={form.description}
-          onChange={(e) => setField("description", e.target.value)}
-        />
-        <FileUpload
-          label="Certificate (optional)"
-          value={form.certificateUrl}
-          onChange={(url) => setField("certificateUrl", url)}
-          error={errors.certificateUrl}
-        />
-        <FileUpload
-          label="Proof (optional)"
-          value={form.proofUrl}
-          onChange={(url) => setField("proofUrl", url)}
-          error={errors.proofUrl}
-        />
-        <MultiSelect
-          label="Reviewers"
-          options={facultyOptions}
-          value={form.facultyIds}
-          onChange={(vals) => setField("facultyIds", vals)}
-          error={errors.facultyIds}
-        />
-
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="px-4 py-2">
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-            disabled={createMutation.isPending}
-          >
-            {createMutation.isPending ? "Submitting…" : "Submit"}
-          </button>
+          <Input label="Title" value={form.title} error={errors.title}
+            onChange={(e) => setField("title", e.target.value)} />
+          <Input label="Category" value={form.category} error={errors.category}
+            onChange={(e) => setField("category", e.target.value)} />
+          <Input label="Description (optional)" value={form.description}
+            onChange={(e) => setField("description", e.target.value)} />
+          <FileUpload label="Certificate (optional)" value={form.certificateUrl} error={errors.certificateUrl}
+            onChange={(url) => setField("certificateUrl", url)} />
+          <FileUpload label="Proof (optional)" value={form.proofUrl} error={errors.proofUrl}
+            onChange={(url) => setField("proofUrl", url)} />
+          <MultiSelect label="Reviewers" options={facultyOptions} value={form.facultyIds} error={errors.facultyIds}
+            onChange={(vals) => setField("facultyIds", vals)} />
         </div>
+
+        <Modal.Footer>
+          <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
+          <Button type="submit" variant="primary" loading={createMutation.isPending} loadingText="Submitting...">
+            Submit
+          </Button>
+        </Modal.Footer>
       </form>
     </Modal>
   );

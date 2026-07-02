@@ -6,6 +6,11 @@
 
 import { useState } from "react";
 import { useDepartmentAchievements } from "../../../hooks/useAchievements";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { FlatCard } from "@/components/ui/GlassCard";
+import { FilterTabs } from "@/components/ui/FilterTabs";
+import { Pager } from "@/components/ui/Pager";
+import { CardLoader } from "@/components/ui/Loader";
 import Badge from "../../../components/ui/Badge";
 
 const STATUS_OPTIONS = [
@@ -14,6 +19,10 @@ const STATUS_OPTIONS = [
   { value: "approved", label: "Approved" },
   { value: "rejected", label: "Rejected" },
 ];
+
+const th = { textAlign: "left", padding: "10px 12px", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)" };
+const td = { padding: "12px", fontSize: "0.85rem", color: "var(--text-secondary)", borderTop: "1px solid var(--border-subtle)" };
+const linkStyle = { color: "var(--text-accent)", textDecoration: "none", fontWeight: 500 };
 
 export default function AchievementsDashboard() {
   const [status, setStatus] = useState("");
@@ -24,74 +33,74 @@ export default function AchievementsDashboard() {
   const params = { page, limit: 20, ...(status ? { status } : {}) };
   const { data, isLoading, error } = useDepartmentAchievements(params);
 
-  if (isLoading) return <p className="p-4">Loading department achievements…</p>;
-  if (error) return <p className="p-4 text-red-600">Couldn't load the dashboard.</p>;
-
   const items = data?.items ?? [];
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-xl font-semibold mb-4">Department Achievements</h1>
+    <div>
+      <PageHeader
+        title="Department Achievements"
+        subtitle="Every achievement submitted by students in your department"
+      />
 
-      <div className="flex gap-2 mb-4">
-        {STATUS_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            className={`px-3 py-1 rounded text-sm ${
-              status === opt.value ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-100"
-            }`}
-            onClick={() => {
-              setStatus(opt.value);
-              setPage(1); // reset paging when the filter changes
-            }}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      <FilterTabs
+        tabs={STATUS_OPTIONS}
+        value={status}
+        onChange={(next) => { setStatus(next); setPage(1); }}
+      />
 
-      <table className="w-full text-sm border-collapse">
-        <thead>
-          <tr className="text-left border-b">
-            <th className="py-2">Student</th>
-            <th>Title</th>
-            <th>Category</th>
-            <th>Status</th>
-            <th>Files</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((a) => (
-            <tr key={a.id} className="border-b">
-              <td className="py-2">{a.student?.user?.name} ({a.student?.rollNo})</td>
-              <td>{a.title}</td>
-              <td>{a.category}</td>
-              <td><Badge type="status" value={a.status} /></td>
-              <td>
-                <div className="flex gap-3">
-                  {a.certificateUrl && (
-                    <a className="text-blue-400 underline" href={a.certificateUrl} target="_blank" rel="noreferrer">Certificate</a>
-                  )}
-                  {a.proofUrl && (
-                    <a className="text-blue-400 underline" href={a.proofUrl} target="_blank" rel="noreferrer">Proof</a>
-                  )}
-                  {!a.certificateUrl && !a.proofUrl && <span className="text-gray-500">—</span>}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {items.length === 0 && <p className="text-gray-500 mt-4">No achievements match this filter.</p>}
-
-      {data?.pagination && (
-        <div className="flex justify-between mt-4 text-sm">
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</button>
-          <span>Page {data.pagination.page} of {data.pagination.totalPages}</span>
-          <button disabled={page >= data.pagination.totalPages} onClick={() => setPage((p) => p + 1)}>Next</button>
-        </div>
+      {isLoading ? (
+        <CardLoader lines={4} />
+      ) : error ? (
+        <p style={{ color: "var(--danger)" }}>Couldn't load the dashboard.</p>
+      ) : items.length === 0 ? (
+        <FlatCard style={{ textAlign: "center", padding: "64px 20px" }}>
+          <p style={{ color: "var(--text-muted)", margin: 0 }}>No achievements match this filter.</p>
+        </FlatCard>
+      ) : (
+        <FlatCard padding="4px 8px">
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={th}>Student</th>
+                <th style={th}>Title</th>
+                <th style={th}>Category</th>
+                <th style={th}>Status</th>
+                <th style={th}>Files</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((a) => (
+                <tr key={a.id}>
+                  <td style={{ ...td, color: "var(--text-primary)" }}>
+                    {a.student?.user?.name} <span style={{ color: "var(--text-muted)" }}>({a.student?.rollNo})</span>
+                  </td>
+                  <td style={td}>{a.title}</td>
+                  <td style={td}>{a.category}</td>
+                  <td style={td}><Badge type="status" value={a.status} /></td>
+                  <td style={td}>
+                    <div style={{ display: "flex", gap: 14 }}>
+                      {a.certificateUrl && (
+                        <a style={linkStyle} href={a.certificateUrl} target="_blank" rel="noreferrer">Certificate</a>
+                      )}
+                      {a.proofUrl && (
+                        <a style={linkStyle} href={a.proofUrl} target="_blank" rel="noreferrer">Proof</a>
+                      )}
+                      {!a.certificateUrl && !a.proofUrl && <span style={{ color: "var(--text-muted)" }}>—</span>}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </FlatCard>
       )}
+
+      <Pager
+        page={page}
+        totalPages={data?.pagination?.totalPages}
+        onPrev={() => setPage((p) => p - 1)}
+        onNext={() => setPage((p) => p + 1)}
+      />
     </div>
   );
 }
